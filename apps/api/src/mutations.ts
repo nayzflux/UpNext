@@ -370,7 +370,8 @@ export async function saveEvent(userId: string, input: z.infer<typeof eventInput
       ...otherEvents.map((event) => new Date(event.startAt).getTime()),
       ...snapshot.sessions.map((session) => new Date(session.endAt).getTime()),
     );
-    const horizon = new Date(latestStart + 8 * 86400000).toISOString();
+    // Include a complete seasonal cycle when weekly series use different time zones.
+    const horizon = new Date(latestStart + 370 * 86400000).toISOString();
     const candidate: CalendarEvent = {
       ...input,
       id: input.id ?? crypto.randomUUID(),

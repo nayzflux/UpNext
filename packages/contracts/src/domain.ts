@@ -193,6 +193,24 @@ export function suggestSlots(input: {
       new Date(log.actualStartAt) <= now,
   );
   const learned = history.length >= 3;
+  const habits = new Map<string, number>();
+  for (const log of history) {
+    const start = new Date(log.actualStartAt).getTime();
+    const end = Math.min(start + log.actualMinutes * 60000, now.getTime());
+    const ageInWeeks = (now.getTime() - start) / (7 * 86400000);
+    let cursor = start;
+    while (cursor < end) {
+      const instant = new Date(cursor);
+      const weekday = weekdayOfDate(localDate(instant, preferences.timeZone));
+      const minute = timeInMinutes(localTime(instant, preferences.timeZone));
+      const bucket = Math.floor(minute / 30);
+      const next = Math.min(end, cursor + (30 - (minute % 30)) * 60000);
+      const weight = (next - cursor) / (30 * 60000) / (1 + ageInWeeks);
+      const key = `${weekday}:${bucket}`;
+      habits.set(key, (habits.get(key) ?? 0) + weight);
+      cursor = next;
+    }
+  }
   const busy = [
     ...sessions.filter((session) => session.status === "planned"),
     ...expandEvents(events, now.toISOString(), horizon.toISOString()),
@@ -242,18 +260,18 @@ export function suggestSlots(input: {
 
         let score = 0;
         if (learned) {
-          for (const log of history) {
-            const logDate = localDate(log.actualStartAt, preferences.timeZone);
-            if (weekdayOfDate(logDate) !== weekday) continue;
-            const bucket = Math.floor(
-              timeInMinutes(localTime(log.actualStartAt, preferences.timeZone)) / 30,
-            );
-            const distance = Math.abs(Math.floor(minute / 30) - bucket);
-            if (distance > 2) continue;
-            const ageInWeeks =
-              (now.getTime() - new Date(log.actualStartAt).getTime()) / (7 * 86400000);
-            score += 1 / ((1 + ageInWeeks) * (1 + distance));
+          let cursor = new Date(startAt).getTime();
+          const end = new Date(endAt).getTime();
+          while (cursor < end) {
+            const instant = new Date(cursor);
+            const slotWeekday = weekdayOfDate(localDate(instant, preferences.timeZone));
+            const slotMinute = timeInMinutes(localTime(instant, preferences.timeZone));
+            const bucket = Math.floor(slotMinute / 30);
+            const next = Math.min(end, cursor + (30 - (slotMinute % 30)) * 60000);
+            score += (habits.get(`${slotWeekday}:${bucket}`) ?? 0) * (next - cursor);
+            cursor = next;
           }
+          score /= durationMinutes * 60000;
         }
         const usesHabit = learned && score > 0;
         candidates.push({

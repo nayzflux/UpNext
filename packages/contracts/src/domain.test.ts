@@ -227,6 +227,24 @@ describe("suggestions déterministes", () => {
       ),
     ).toBe(true);
   });
+  it("observe toute la durée réellement travaillée, y compris après minuit", () => {
+    const slots = suggestions({
+      logs: [
+        log("2026-03-16T22:00:00Z", 240),
+        log("2026-03-09T22:00:00Z", 240),
+        log("2026-03-02T22:00:00Z", 240),
+      ],
+      preferences: {
+        ...preferences,
+        availability: [{ weekday: 2, startTime: "01:00", endTime: "04:00" }],
+      },
+    });
+    expect(slots[0]).toMatchObject({
+      startAt: "2026-03-24T00:00:00.000Z",
+      learned: true,
+    });
+    expect(slots[0].reason).toContain("mardi");
+  });
   it("retourne zéro résultat sans disponibilité ou après échéance", () => {
     expect(suggestions({ preferences: { ...preferences, availability: [] } })).toEqual([]);
     expect(suggestions({ task: { ...task, dueAt: now.toISOString() } })).toEqual([]);

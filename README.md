@@ -114,9 +114,10 @@ bun run build
 
 Les tests navigateur utilisent PostgreSQL et Mailpit démarrés localement. Ils lancent `bun run dev` si nécessaire et créent des comptes `e2e-…@upnext.local`, sans modifier les autres comptes. Les traces des échecs et le rapport se trouvent dans `test-results` et `playwright-report`. Les tests métier couvrent les calculs, les suggestions et les changements d’heure.
 
+Les parcours vérifient aussi la récupération du mot de passe par email, les modals centrés, le snap de quinze minutes, les dimensions de l’aperçu après dépôt et le redimensionnement sur la carte d’origine. Les tests respectent le délai de réessai de Better Auth si plusieurs exécutions rapprochées atteignent la limite d’inscription.
+
 Les versions résolues sont verrouillées dans `bun.lock`. Après une modification du schéma : `bun run db:generate`, relire la migration produite, puis `bun run db:migrate`.
 
 ## Périmètre V1
 
 Planification manuelle, comptes privés, tags libres, événements ponctuels/hebdomadaires, bilans et suggestions. Les tâches récurrentes, le partage, les agendas externes, les notifications push, le chronomètre et la replanification automatique sont exclus. Le dashboard charge les données du compte en une réponse pour garder cette première version simple ; une pagination serveur pourra être ajoutée si le volume le justifie.
-

@@ -241,4 +241,58 @@ describe("PostgreSQL : propriété, contraintes et transactions", () => {
       }),
     ).rejects.toMatchObject({ code: "CONFLICT" });
   });
+  it("détecte un conflit de séries qui apparaît au changement d’heure suivant", async () => {
+    await saveEvent(alice, {
+      title: "Rendez-vous à New York",
+      startAt: "2027-03-02T15:00:00Z",
+      endAt: "2027-03-02T16:00:00Z",
+      timeZone: "America/New_York",
+      weekly: true,
+      repeatUntil: "2027-04-10",
+      allowOverlap: false,
+    });
+    await expect(
+      saveEvent(alice, {
+        title: "Cours à Paris",
+        startAt: "2027-03-02T14:00:00Z",
+        endAt: "2027-03-02T15:00:00Z",
+        timeZone: "Europe/Paris",
+        weekly: true,
+        repeatUntil: "2027-04-10",
+        allowOverlap: false,
+      }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+  });
+  it("enregistre une séance manquée sans avancement et refuse la correction d’un ancien bilan", async () => {
+    const task = await saveTask(alice, taskInput());
+    const session = await saveSession(alice, {
+      taskId: task.id,
+      startAt: future(-3),
+      endAt: future(-3, 11),
+      allowOverlap: false,
+    });
+    const missed = await saveLog(alice, {
+      ...logInput(task),
+      sessionId: session.id,
+      actualStartAt: session.startAt,
+      actualMinutes: 0,
+      missed: true,
+    });
+    expect(missed.log.progressAfter).toBe(0);
+    let snapshot = await getSnapshot(alice);
+    expect(snapshot.sessions.find((item) => item.id === session.id)?.status).toBe("missed");
+    let current = snapshot.tasks.find((item) => item.id === task.id)!;
+    const actual = await saveLog(alice, logInput(current));
+    expect(actual.log).toMatchObject({
+      sessionId: null,
+      actualMinutes: 90,
+      progressBefore: 0,
+      progressAfter: 25,
+    });
+    snapshot = await getSnapshot(alice);
+    current = snapshot.tasks.find((item) => item.id === task.id)!;
+    await expect(
+      saveLog(alice, { ...logInput(current), id: missed.log.id, sessionId: session.id }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+  });
 });
