@@ -124,6 +124,11 @@ describe("tâches, tags et avancement", () => {
       getTaskMetrics(task, [session("2026-03-24T10:00:00Z", "2026-03-24T15:00:00Z")], [], now),
     ).toMatchObject({ unplannedMinutes: 0, planning: "full" });
   });
+  it("retourne l’état planning 'done' lorsque la tâche est terminée (100 %)", () => {
+    expect(
+      getTaskMetrics({ ...task, progress: 100 }, [], [], now),
+    ).toMatchObject({ remainingMinutes: 0, unplannedMinutes: 0, planning: "done" });
+  });
   it("convertit 50 % de 4 h en 2 h sans modifier les réservations", () => {
     expect(percentageToMinutes(50, 240)).toBe(120);
     const reserved = session("2026-03-24T10:00:00Z", "2026-03-24T12:00:00Z");

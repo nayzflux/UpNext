@@ -96,16 +96,23 @@ function blockStyle(block: CalendarBlock, firstMinute: number): CSSProperties {
 
 function BlockText({ block }: { block: CalendarBlock }) {
   const { timeZone } = useWorkspace();
+  const durationMinutes = block.end - block.start;
+  const startTime = formatDate(block.startAt, timeZone, "HH:mm");
+  const endTime = formatDate(block.endAt, timeZone, "HH:mm");
+  const durationText = duration(minutesBetween(block.startAt, block.endAt));
+
   return (
     <>
       <strong>{block.title}</strong>
-      {block.end - block.start >= 30 && (
+      {durationMinutes >= 45 ? (
         <span>
-          {formatDate(block.startAt, timeZone, "HH:mm")}–
-          {formatDate(block.endAt, timeZone, "HH:mm")} ·{" "}
-          {duration(minutesBetween(block.startAt, block.endAt))}
+          {startTime}–{endTime} · {durationText}
         </span>
-      )}
+      ) : durationMinutes >= 30 ? (
+        <span>
+          {startTime}–{endTime}
+        </span>
+      ) : null}
     </>
   );
 }
@@ -121,6 +128,11 @@ function SessionBlock({
 }) {
   const { openEditor, timeZone } = useWorkspace();
   const session = block.session!;
+  const durationMinutes = block.end - block.start;
+  const startTime = formatDate(session.startAt, timeZone, "HH:mm");
+  const endTime = formatDate(session.endAt, timeZone, "HH:mm");
+  const durationText = duration(minutesBetween(session.startAt, session.endAt));
+
   const { setNodeRef, listeners, attributes } = useDraggable({
     id: `session:${block.id}`,
     data: { kind: "session", session } satisfies CalendarDrag,
@@ -141,8 +153,11 @@ function SessionBlock({
       data-testid="session-card"
       data-session-id={session.id}
       data-resizing={block.resizing || undefined}
+      data-duration={durationMinutes}
       className={cn(
         "calendar-block work-block",
+        durationMinutes < 30 && "is-short-block",
+        durationMinutes >= 30 && durationMinutes < 45 && "is-compact-block",
         movingSessionId === session.id && "drag-origin",
         block.resizing && "resizing-block",
         session.status !== "planned" && "past-block",
@@ -155,7 +170,8 @@ function SessionBlock({
         className="calendar-block-main"
         {...listeners}
         {...attributes}
-        aria-label={`${block.title}, ${formatDate(session.startAt, timeZone, "HH:mm")}. Déplacer ou ouvrir la séance.`}
+        title={`${block.title} (${startTime}–${endTime} · ${durationText})`}
+        aria-label={`${block.title}, ${startTime}. Déplacer ou ouvrir la séance.`}
         onClick={() =>
           openEditor(
             session.status === "planned"
@@ -236,12 +252,18 @@ export function DayColumn({
       }}
     >
       {[...blocks, ...originals].map((block) => {
+        const durationMinutes = block.end - block.start;
         if (block.preview)
           return (
             <div
               key={block.id}
               data-testid="calendar-drag-preview"
-              className="calendar-block work-block snapping-preview"
+              data-duration={durationMinutes}
+              className={cn(
+                "calendar-block work-block snapping-preview",
+                durationMinutes < 30 && "is-short-block",
+                durationMinutes >= 30 && durationMinutes < 45 && "is-compact-block",
+              )}
               style={blockStyle(block, firstMinute)}
             >
               <BlockText block={block} />
@@ -256,13 +278,22 @@ export function DayColumn({
               movingSessionId={movingSessionId}
             />
           );
+        const startTime = formatDate(block.startAt, timeZone, "HH:mm");
+        const endTime = formatDate(block.endAt, timeZone, "HH:mm");
+        const durationText = duration(minutesBetween(block.startAt, block.endAt));
         return (
           <Button
             type="button"
             variant="ghost"
             key={block.id}
-            className="calendar-block event-block"
+            data-duration={durationMinutes}
+            className={cn(
+              "calendar-block event-block",
+              durationMinutes < 30 && "is-short-block",
+              durationMinutes >= 30 && durationMinutes < 45 && "is-compact-block",
+            )}
             style={blockStyle(block, firstMinute)}
+            title={`${block.title} (${startTime}–${endTime} · ${durationText})`}
             onClick={() => openEditor({ type: "event", eventId: block.event!.id })}
           >
             <BlockText block={block} />

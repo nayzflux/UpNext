@@ -1,6 +1,6 @@
 import { formatInTimeZone } from "date-fns-tz";
 import { fr } from "date-fns/locale";
-import { localDate, localTime, zonedInstant } from "@upnext/contracts";
+import { localDate, localTime, zonedInstant, type PlanningStatus } from "@upnext/contracts";
 
 export function duration(minutes: number) {
   const rounded = Math.round(minutes);
@@ -29,8 +29,9 @@ export function errorMessage(error: unknown) {
 }
 
 export const priorityLabels = { low: "Basse", normal: "Normale", high: "Haute" };
-export const planningLabels = {
+export const planningLabels: Record<PlanningStatus, string> = {
   none: "Non planifiée",
   partial: "Partiellement planifiée",
   full: "Planifiée",
+  done: "Fait",
 };

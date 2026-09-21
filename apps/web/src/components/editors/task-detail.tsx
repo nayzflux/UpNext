@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ConfirmAction, TaskTags } from "../common";
+import { ConfirmAction, PlanningBadge, TaskTags } from "../common";
 
 export function TaskDetail({ task }: { task: Task }) {
   const { snapshot, timeZone, now, openEditor, closeEditor } = useWorkspace();
@@ -22,9 +22,12 @@ export function TaskDetail({ task }: { task: Task }) {
 
   return (
     <div className="editor-form">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <TaskTags task={task} />
-        <Badge variant="outline">Priorité {priorityLabels[task.priority].toLowerCase()}</Badge>
+        <div className="flex items-center gap-2">
+          <PlanningBadge status={metrics.planning} />
+          <Badge variant="outline">Priorité {priorityLabels[task.priority].toLowerCase()}</Badge>
+        </div>
       </div>
       {task.notes && (
         <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">

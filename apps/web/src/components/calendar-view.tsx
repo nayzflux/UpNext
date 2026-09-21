@@ -77,6 +77,7 @@ export function CalendarView() {
   const [fullDay, setFullDay] = useState(false);
   const grid = useRef<HTMLDivElement>(null);
   const pointer = useRef<{ x: number; y: number } | null>(null);
+  const isPointerDrag = useRef(false);
   const dragOrigin = useRef({ pageY: 0, grabOffset: 0 });
   const queryClient = useQueryClient();
   const key = orpc.dashboard.get.queryOptions().queryKey;
@@ -197,6 +198,7 @@ export function CalendarView() {
     const data = event.active.data.current as CalendarDrag;
     const activator = event.activatorEvent;
     const isPointer = "clientY" in activator && "clientX" in activator;
+    isPointerDrag.current = isPointer;
     const originCard =
       activator.target instanceof Element
         ? activator.target.closest<HTMLElement>("[data-session-id]")
@@ -227,9 +229,10 @@ export function CalendarView() {
   function previewFor(event: DragMoveEvent | DragEndEvent) {
     const data = event.active.data.current as CalendarDrag;
     if (data.kind === "resize") {
-      const delta = pointer.current
-        ? pointer.current.y + window.scrollY - dragOrigin.current.pageY
-        : event.delta.y;
+      const delta =
+        isPointerDrag.current && pointer.current
+          ? pointer.current.y + window.scrollY - dragOrigin.current.pageY
+          : event.delta.y;
       return createPreview(
         data,
         localDate(data.session.startAt, timeZone),
@@ -238,13 +241,25 @@ export function CalendarView() {
         resizeDuration(minutesBetween(data.session.startAt, data.session.endAt), delta),
       );
     }
+    if (!isPointerDrag.current && data.kind === "session") {
+      const dayWidth =
+        grid.current?.querySelector("[data-calendar-date]")?.getBoundingClientRect().width ?? 100;
+      const dayIndex = dates.indexOf(localDate(data.session.startAt, timeZone));
+      const dayDelta = Math.round(event.delta.x / dayWidth);
+      const targetDate =
+        dates[Math.max(0, Math.min(dates.length - 1, dayIndex + dayDelta))] ?? date;
+      const startMinute = minuteOfDay(data.session.startAt, timeZone);
+      const minute = startMinute + event.delta.y / pixelsPerMinute;
+      return createPreview(data, targetDate, minute, timeZone);
+    }
     const columns = Array.from(
       grid.current?.querySelectorAll<HTMLElement>("[data-calendar-date]") ?? [],
     );
     const translated = event.active.rect.current.translated;
     const point =
-      pointer.current ??
-      (translated ? { x: translated.left + translated.width / 2, y: translated.top } : null);
+      isPointerDrag.current && pointer.current
+        ? pointer.current
+        : (translated ? { x: translated.left + translated.width / 2, y: translated.top } : null);
     if (!point) return null;
     const column = columns.find((element) => {
       const rect = element.getBoundingClientRect();
@@ -263,7 +278,6 @@ export function CalendarView() {
   }
 
   function dragMove(event: DragMoveEvent) {
-    if (move.isPending) return;
     try {
       setPreview(previewFor(event));
     } catch {
@@ -275,6 +289,7 @@ export function CalendarView() {
     setDragging(null);
     setPreview(null);
     pointer.current = null;
+    isPointerDrag.current = false;
   }
 
   function dragEnd(event: DragEndEvent) {
@@ -303,7 +318,7 @@ export function CalendarView() {
   }
 
   function rememberPointer(event: ReactPointerEvent) {
-    if (dragging) pointer.current = { x: event.clientX, y: event.clientY };
+    if (dragging && isPointerDrag.current) pointer.current = { x: event.clientX, y: event.clientY };
   }
 
   function navigate(direction: number) {

@@ -83,6 +83,7 @@ test("modal centré, aperçu à taille réelle, snap et redimensionnement sur la
   expect(await originalNode!.evaluate((element) => element.isConnected)).toBe(true);
   await page.screenshot({ path: "test-results/calendar-resize.png" });
   await page.mouse.up();
+  await expect(page.getByText("Planning mis à jour").last()).toBeVisible();
   await expect(card).not.toHaveAttribute("data-resizing", "true");
   await expect(card).toContainText("10:30–13:00");
   expect((await card.boundingBox())!.height).toBeCloseTo(resized!.height, 0);
@@ -141,4 +142,46 @@ test("modal centré, aperçu à taille réelle, snap et redimensionnement sur la
     0,
   );
   expect(hydrationErrors).toEqual([]);
+});
+
+test("séances courtes (15 min) : lisibilité, compacité et poignée de redimensionnement au survol", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 1100 });
+  await signUp(page);
+  await openTaskForm(page, "Point rapide 15m");
+  await page.getByLabel("Temps estimé, en minutes").fill("15");
+  await saveTask(page);
+
+  const date = addCalendarDays(localDate(new Date(), "Europe/Paris"), 1);
+  await page.goto(`/calendrier?date=${date}`);
+  await page.reload();
+  await page.getByRole("button", { name: "Jour", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Planifier Point rapide 15m", exact: true })
+    .click();
+  await setDateTime(page, "Début de la séance", `${date}T09:00`);
+  await page.getByRole("button", { name: "Planifier la séance", exact: true }).click();
+  const modal = page.getByTestId("editor-modal");
+  await expect(modal).toHaveCount(0);
+
+  const card15 = page.getByTestId("session-card");
+  await expect(card15).toHaveAttribute("data-duration", "15");
+  await expect(card15).toHaveClass(/is-short-block/);
+  await expect(card15).toContainText("Point rapide 15m");
+
+  const box15 = await card15.boundingBox();
+  expect(box15!.height).toBeCloseTo(15 * pixelsPerMinute, 0);
+
+  const handle15 = card15.getByRole("button", { name: /Redimensionner/ });
+  await expect(handle15).toHaveCSS("opacity", "0");
+
+  await card15.hover();
+  await expect(handle15).toHaveCSS("opacity", "1");
+
+  await card15.getByRole("button", { name: /Déplacer ou ouvrir/ }).click();
+  await expect(modal).toBeVisible();
+  await expect(page.getByLabel("Durée, en minutes")).toHaveValue("15");
+  await page.keyboard.press("Escape");
+  await expect(modal).toHaveCount(0);
 });

@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { getTaskMetrics, type Task } from "@upnext/contracts";
 import { useWorkspace } from "./workspace-context";
-import { duration, formatDate, planningLabels, priorityLabels } from "@/lib/format";
+import { duration, formatDate, priorityLabels } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -39,7 +39,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { EmptyTasks, PageHeading, TaskTags } from "./common";
+import { EmptyTasks, PageHeading, PlanningBadge, TaskTags } from "./common";
 import { SelectControl } from "./select-control";
 
 const features = tableFeatures({
@@ -72,7 +72,8 @@ export function TasksView() {
           return false;
         if (tag === "none" && task.tagIds.length > 0) return false;
         if (tag !== "all" && tag !== "none" && !task.tagIds.includes(tag)) return false;
-        if (status === "active" && task.progress === 100) return false;
+        if (status === "active" && planning !== "done" && task.progress === 100)
+          return false;
         if (status === "not-started" && task.progress !== 0) return false;
         if (status === "in-progress" && (task.progress === 0 || task.progress === 100))
           return false;
@@ -184,18 +185,16 @@ export function TasksView() {
         id: "planning",
         header: "Planning",
         cell: ({ row }) => (
-          <span className="whitespace-nowrap text-xs text-muted-foreground">
-            {
-              planningLabels[
-                getTaskMetrics(
-                  row.original,
-                  snapshot.sessions,
-                  snapshot.logs,
-                  new Date(snapshot.serverNow),
-                ).planning
-              ]
+          <PlanningBadge
+            status={
+              getTaskMetrics(
+                row.original,
+                snapshot.sessions,
+                snapshot.logs,
+                new Date(snapshot.serverNow),
+              ).planning
             }
-          </span>
+          />
         ),
       },
       {
@@ -314,6 +313,7 @@ export function TasksView() {
             { value: "none", label: "Non planifiées" },
             { value: "partial", label: "Partiellement planifiées" },
             { value: "full", label: "Planifiées" },
+            { value: "done", label: "Fait" },
           ]}
           value={planning}
           onValueChange={setPlanning}

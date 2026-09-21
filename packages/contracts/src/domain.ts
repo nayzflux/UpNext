@@ -16,6 +16,8 @@ export function minutesBetween(start: string, end: string) {
   return Math.max(0, (new Date(end).getTime() - new Date(start).getTime()) / 60000);
 }
 
+export type PlanningStatus = "none" | "partial" | "full" | "done";
+
 export function getTaskMetrics(
   task: Task,
   sessions: Session[],
@@ -35,9 +37,11 @@ export function getTaskMetrics(
     .filter((log) => log.taskId === task.id)
     .reduce((total, log) => total + log.actualMinutes, 0);
   const unplannedMinutes = Math.max(0, remainingMinutes - plannedMinutes);
-  let planning: "none" | "partial" | "full" = "none";
+  let planning: PlanningStatus = "none";
 
-  if (remainingMinutes === 0 || plannedMinutes >= remainingMinutes) {
+  if (task.progress >= 100) {
+    planning = "done";
+  } else if (remainingMinutes === 0 || plannedMinutes >= remainingMinutes) {
     planning = "full";
   } else if (plannedMinutes > 0) {
     planning = "partial";
