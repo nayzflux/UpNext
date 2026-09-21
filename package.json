@@ -1,0 +1,37 @@
+{
+  "name": "upnext",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.4.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "concurrently -n api,web -c green,blue \"bun --filter @upnext/api dev\" \"bun --filter @upnext/web dev\"",
+    "build": "bun --filter @upnext/api build && bun --filter @upnext/web build",
+    "typecheck": "bun run --filter './packages/*' typecheck && bun run --filter './apps/*' typecheck",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:e2e": "playwright test",
+    "db:migrate": "bun --filter @upnext/api db:migrate",
+    "db:generate": "bun --filter @upnext/api db:generate",
+    "db:demo": "bun --filter @upnext/api db:demo"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "@playwright/test": "1.63.0",
+    "@types/node": "26.6.2",
+    "concurrently": "10.0.5",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.3.5",
+    "prettier": "3.9.8",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.70.0",
+    "vitest": "5.0.1"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}

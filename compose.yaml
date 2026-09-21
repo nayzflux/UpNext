@@ -1,0 +1,23 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: upnext
+      POSTGRES_PASSWORD: upnext
+      POSTGRES_DB: upnext
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - upnext_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U upnext -d upnext"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+  mailpit:
+    image: axllent/mailpit:v1.27
+    ports:
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
+volumes:
+  upnext_postgres:
