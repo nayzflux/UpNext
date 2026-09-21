@@ -10,7 +10,7 @@ import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Spinner } from "@/components/ui/spinner";
-import { DateTimeField, FormError } from "./fields";
+import { DatePicker, DateTimeField, FormError } from "./fields";
 import { ConfirmAction } from "../common";
 
 export function EventEditor({
@@ -91,12 +91,7 @@ export function EventEditor({
         {weekly && (
           <Field>
             <FieldLabel htmlFor="event-until">Jusqu’au · facultatif</FieldLabel>
-            <Input
-              id="event-until"
-              type="date"
-              value={repeatUntil}
-              onChange={(event) => setRepeatUntil(event.target.value)}
-            />
+            <DatePicker id="event-until" value={repeatUntil} onChange={setRepeatUntil} />
             <FieldDescription>
               Les modifications s’appliquent à toute la série. Les horaires suivent le fuseau{" "}
               {timeZone}.

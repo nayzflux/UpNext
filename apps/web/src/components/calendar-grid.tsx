@@ -31,20 +31,25 @@ export function BacklogTask({ task }: { task: Task }) {
   return (
     <div ref={setNodeRef} className={cn("backlog-task", isDragging && "opacity-40")}>
       <div className="flex items-start gap-2">
-        <button
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
           className="drag-handle"
           {...listeners}
           {...attributes}
           aria-label={`Glisser ${task.title} dans le calendrier`}
         >
-          <GripVertical className="size-4" />
-        </button>
-        <button
-          className="flex-1 text-left text-sm font-semibold"
+          <GripVertical />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          className="h-auto flex-1 justify-start whitespace-normal p-0 text-left"
           onClick={() => openEditor({ type: "detail", taskId: task.id })}
         >
-          {task.title}
-        </button>
+          <span className="font-semibold">{task.title}</span>
+        </Button>
       </div>
       <div className="mt-3">
         <TaskTags task={task} />
@@ -144,7 +149,9 @@ function SessionBlock({
       )}
       style={blockStyle(block, firstMinute)}
     >
-      <button
+      <Button
+        type="button"
+        variant="ghost"
         className="calendar-block-main"
         {...listeners}
         {...attributes}
@@ -158,9 +165,11 @@ function SessionBlock({
         }
       >
         <BlockText block={block} />
-      </button>
+      </Button>
       {session.status === "planned" && (
-        <button
+        <Button
+          type="button"
+          variant="ghost"
           ref={setResizeRef}
           {...resizeListeners}
           {...resizeAttributes}
@@ -168,7 +177,7 @@ function SessionBlock({
           aria-label={`Redimensionner ${block.title}`}
         >
           <span />
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -248,14 +257,16 @@ export function DayColumn({
             />
           );
         return (
-          <button
+          <Button
+            type="button"
+            variant="ghost"
             key={block.id}
             className="calendar-block event-block"
             style={blockStyle(block, firstMinute)}
             onClick={() => openEditor({ type: "event", eventId: block.event!.id })}
           >
             <BlockText block={block} />
-          </button>
+          </Button>
         );
       })}
     </div>

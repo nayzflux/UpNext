@@ -30,7 +30,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import {
   Table,
   TableBody,
@@ -41,6 +40,7 @@ import {
 } from "@/components/ui/table";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { EmptyTasks, PageHeading, TaskTags } from "./common";
+import { SelectControl } from "./select-control";
 
 const features = tableFeatures({
   rowSortingFeature,
@@ -115,12 +115,14 @@ export function TasksView() {
             >
               {row.original.progress === 100 ? <Check /> : <span className="task-check" />}
             </Button>
-            <button
-              className="text-left font-semibold"
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-auto justify-start whitespace-normal p-0 text-left"
               onClick={() => openEditor({ type: "detail", taskId: row.original.id })}
             >
-              {row.original.title}
-            </button>
+              <span className="font-semibold">{row.original.title}</span>
+            </Button>
           </div>
         ),
       },
@@ -272,52 +274,50 @@ export function TasksView() {
             onChange={(event) => setSearch(event.target.value)}
           />
         </InputGroup>
-        <NativeSelect
-          aria-label="Filtrer par tag"
+        <SelectControl
+          label="Filtrer par tag"
+          options={[
+            { value: "all", label: "Tous les tags" },
+            { value: "none", label: "Sans tag" },
+            ...snapshot.tags.map((tag) => ({ value: tag.id, label: tag.name })),
+          ]}
           value={tag}
-          onChange={(event) =>
-            router.replace(
-              event.target.value === "all" ? "/taches" : `/taches?tag=${event.target.value}`,
-            )
+          onValueChange={(nextTag) =>
+            router.replace(nextTag === "all" ? "/taches" : `/taches?tag=${nextTag}`)
           }
-        >
-          <NativeSelectOption value="all">Tous les tags</NativeSelectOption>
-          <NativeSelectOption value="none">Sans tag</NativeSelectOption>
-          {snapshot.tags.map((tag) => (
-            <NativeSelectOption key={tag.id} value={tag.id}>
-              {tag.name}
-            </NativeSelectOption>
-          ))}
-        </NativeSelect>
-        <NativeSelect
-          aria-label="Filtrer par priorité"
+        />
+        <SelectControl
+          label="Filtrer par priorité"
+          options={[
+            { value: "all", label: "Toute priorité" },
+            { value: "high", label: "Haute" },
+            { value: "normal", label: "Normale" },
+            { value: "low", label: "Basse" },
+          ]}
           value={priority}
-          onChange={(event) => setPriority(event.target.value)}
-        >
-          <NativeSelectOption value="all">Toute priorité</NativeSelectOption>
-          <NativeSelectOption value="high">Haute</NativeSelectOption>
-          <NativeSelectOption value="normal">Normale</NativeSelectOption>
-          <NativeSelectOption value="low">Basse</NativeSelectOption>
-        </NativeSelect>
-        <NativeSelect
-          aria-label="Filtrer par échéance"
+          onValueChange={setPriority}
+        />
+        <SelectControl
+          label="Filtrer par échéance"
+          options={[
+            { value: "all", label: "Toute échéance" },
+            { value: "late", label: "En retard" },
+            { value: "week", label: "Dans les 7 jours" },
+          ]}
           value={deadline}
-          onChange={(event) => setDeadline(event.target.value)}
-        >
-          <NativeSelectOption value="all">Toute échéance</NativeSelectOption>
-          <NativeSelectOption value="late">En retard</NativeSelectOption>
-          <NativeSelectOption value="week">Dans les 7 jours</NativeSelectOption>
-        </NativeSelect>
-        <NativeSelect
-          aria-label="Filtrer par planification"
+          onValueChange={setDeadline}
+        />
+        <SelectControl
+          label="Filtrer par planification"
+          options={[
+            { value: "all", label: "Tout le planning" },
+            { value: "none", label: "Non planifiées" },
+            { value: "partial", label: "Partiellement planifiées" },
+            { value: "full", label: "Planifiées" },
+          ]}
           value={planning}
-          onChange={(event) => setPlanning(event.target.value)}
-        >
-          <NativeSelectOption value="all">Tout le planning</NativeSelectOption>
-          <NativeSelectOption value="none">Non planifiées</NativeSelectOption>
-          <NativeSelectOption value="partial">Partiellement planifiées</NativeSelectOption>
-          <NativeSelectOption value="full">Planifiées</NativeSelectOption>
-        </NativeSelect>
+          onValueChange={setPlanning}
+        />
       </div>
       <div className="surface overflow-hidden">
         {data.length ? (

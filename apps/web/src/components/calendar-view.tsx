@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -61,6 +62,7 @@ import { BacklogTask, DayColumn } from "./calendar-grid";
 
 export function CalendarView() {
   const { snapshot, now, timeZone, openEditor } = useWorkspace();
+  const dndContextId = useId();
   const searchParams = useSearchParams();
   const requestedDate = searchParams.get("date");
   const [date, setDate] = useState(
@@ -338,6 +340,7 @@ export function CalendarView() {
         </Button>
       </PageHeading>
       <DndContext
+        id={dndContextId}
         sensors={sensors}
         autoScroll={false}
         collisionDetection={(args) => {
@@ -466,7 +469,10 @@ export function CalendarView() {
                         day === localDate(now, timeZone) && "is-today",
                       )}
                     >
-                      <button
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-xs"
                         className="month-date"
                         onClick={() => {
                           setDate(day);
@@ -474,9 +480,11 @@ export function CalendarView() {
                         }}
                       >
                         {Number(day.slice(-2))}
-                      </button>
+                      </Button>
                       {blocks.slice(0, 3).map((block) => (
-                        <button
+                        <Button
+                          type="button"
+                          variant="ghost"
                           key={block.id}
                           className={block.session ? "month-session" : "month-event"}
                           onClick={() =>
@@ -486,27 +494,32 @@ export function CalendarView() {
                           }
                         >
                           {block.title}
-                        </button>
+                        </Button>
                       ))}
                       {deadlines.slice(0, 1).map((task) => (
-                        <button
+                        <Button
+                          type="button"
+                          variant="ghost"
                           key={task.id}
                           className="month-deadline"
                           onClick={() => openEditor({ type: "detail", taskId: task.id })}
                         >
                           À rendre · {task.title}
-                        </button>
+                        </Button>
                       ))}
                       {blocks.length > 3 && (
-                        <button
-                          className="text-xs text-muted-foreground"
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="xs"
+                          className="h-auto justify-start p-0 text-muted-foreground"
                           onClick={() => {
                             setDate(day);
                             setView("day");
                           }}
                         >
                           + {blocks.length - 3} autres
-                        </button>
+                        </Button>
                       )}
                     </div>
                   );
@@ -520,9 +533,14 @@ export function CalendarView() {
                 >
                   <span className="time-zone-label">24 h</span>
                   {dates.map((day) => (
-                    <button
+                    <Button
+                      type="button"
+                      variant="ghost"
                       key={day}
-                      className={day === localDate(now, timeZone) ? "is-today" : ""}
+                      className={cn(
+                        "h-auto min-w-0 flex-col rounded-none",
+                        day === localDate(now, timeZone) && "is-today",
+                      )}
                       onClick={() => {
                         setDate(day);
                         setView("day");
@@ -532,7 +550,7 @@ export function CalendarView() {
                         {formatDate(zonedInstant(day, "12:00", timeZone), timeZone, "EEE")}
                       </span>
                       <strong>{Number(day.slice(-2))}</strong>
-                      <div className="day-deadlines">
+                      <span className="day-deadlines">
                         {snapshot.tasks
                           .filter(
                             (task) =>
@@ -544,8 +562,8 @@ export function CalendarView() {
                               À rendre · {task.title}
                             </span>
                           ))}
-                      </div>
-                    </button>
+                      </span>
+                    </Button>
                   ))}
                 </div>
                 <div className="calendar-grid-container" ref={grid}>

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { addCalendarDays, localDate } from "../../packages/contracts/src/domain";
 import { hourHeight } from "../../apps/web/src/lib/calendar-layout";
-import { signUp, openTaskForm, saveTask, addTag } from "./helpers";
+import { signUp, openTaskForm, saveTask, addTag, setDateTime } from "./helpers";
 
 const today = () => localDate(new Date(), "Europe/Paris");
 test("inscription, tags, 50 %, déplacement, refus, bilan et réévaluation", async ({
@@ -22,7 +22,7 @@ test("inscription, tags, 50 %, déplacement, refus, bilan et réévaluation", as
   await expect(page.getByRole("row", { name: /Préparer mon DS/ })).toContainText("Priorités");
   await page.getByRole("button", { name: "Planifier Préparer mon DS", exact: true }).click();
   const tomorrow = addCalendarDays(today(), 1);
-  await page.getByLabel("Début de la séance").fill(`${tomorrow}T10:00`);
+  await setDateTime(page, "Début de la séance", `${tomorrow}T10:00`);
   await page.getByLabel("Part de la tâche, en %").fill("50");
   await expect(page.getByLabel("Durée, en minutes")).toHaveValue("120");
   await page.getByRole("button", { name: "Planifier la séance", exact: true }).click();
@@ -50,8 +50,8 @@ test("inscription, tags, 50 %, déplacement, refus, bilan et réévaluation", as
 
   await page.getByRole("button", { name: "Événement", exact: true }).click();
   await page.getByLabel("Nom de l’événement").fill("Rendez-vous");
-  await page.getByLabel("Début", { exact: true }).fill(`${tomorrow}T13:00`);
-  await page.getByLabel("Fin", { exact: true }).fill(`${tomorrow}T14:00`);
+  await setDateTime(page, "Début", `${tomorrow}T13:00`);
+  await setDateTime(page, "Fin", `${tomorrow}T14:00`);
   await page.getByRole("button", { name: "Créer l’événement", exact: true }).click();
   await expect(page.getByTestId("editor-modal")).toHaveCount(0);
   await expect(
@@ -71,7 +71,7 @@ test("inscription, tags, 50 %, déplacement, refus, bilan et réévaluation", as
   await expect(page.getByText(/Ce créneau chevauche/)).toBeVisible();
 
   await moved.click();
-  await page.getByLabel("Début de la séance").fill(`${addCalendarDays(today(), -1)}T10:00`);
+  await setDateTime(page, "Début de la séance", `${addCalendarDays(today(), -1)}T10:00`);
   await page.getByRole("button", { name: "Enregistrer", exact: true }).click();
   await expect(page.getByTestId("editor-modal")).toHaveCount(0);
   await page.goto("/taches");
@@ -85,7 +85,7 @@ test("inscription, tags, 50 %, déplacement, refus, bilan et réévaluation", as
   await page.getByRole("button", { name: "Ajuster l’estimation", exact: true }).click();
   await expect(page.getByTestId("editor-modal")).toHaveCount(0);
   await page.getByRole("button", { name: "Planifier Préparer mon DS", exact: true }).click();
-  await page.getByLabel("Début de la séance").fill(`${tomorrow}T15:00`);
+  await setDateTime(page, "Début de la séance", `${tomorrow}T15:00`);
   await page.getByLabel("Durée, en minutes").fill("270");
   await page.getByRole("button", { name: "Planifier la séance" }).click();
   await expect(page.getByTestId("editor-modal")).toHaveCount(0);
@@ -122,7 +122,8 @@ test("tâche sans tag, réutilisation, doublons, renommage et suppression", asyn
   await expect(page.getByRole("row", { name: /Deuxième tâche/ })).toContainText(
     "Projet personnel",
   );
-  await page.getByLabel("Filtrer par tag").selectOption("none");
+  await page.getByRole("combobox", { name: "Filtrer par tag" }).click();
+  await page.getByRole("option", { name: "Sans tag", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Sans classement", exact: true }),
   ).toBeVisible();
@@ -155,7 +156,9 @@ test("compte vide indépendant, mobile, clavier et thèmes", async ({ page }) =>
   await openTaskForm(page, "Ma tâche mobile");
   await saveTask(page);
   await page.getByRole("button", { name: "Planifier Ma tâche mobile", exact: true }).click();
-  await expect(page.getByLabel("Début de la séance")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Début de la séance", exact: true }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Annuler", exact: true }).click();
   await page.goto("/parametres");
   await page.getByRole("button", { name: "Sombre", exact: true }).click();

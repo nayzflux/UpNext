@@ -239,16 +239,18 @@ export function TodayView() {
                         "session" in item ? "timeline-content work" : "timeline-content"
                       }
                     >
-                      <button
-                        className="text-left text-sm font-semibold"
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="h-auto justify-start whitespace-normal p-0 text-left"
                         onClick={() =>
                           "session" in item
                             ? openEditor({ type: "detail", taskId: item.session.taskId })
                             : openEditor({ type: "event", eventId: item.event.id })
                         }
                       >
-                        {item.title}
-                      </button>
+                        <span className="font-semibold">{item.title}</span>
+                      </Button>
                       <div className="mt-2 flex items-center justify-between gap-2">
                         <span className="text-xs text-muted-foreground">
                           {duration(minutesBetween(item.startAt, item.endAt))}

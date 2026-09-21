@@ -105,8 +105,10 @@ export function Workspace({
       </a>
       <div className="app-layout">
         {menuOpen && (
-          <button
-            className="mobile-scrim"
+          <Button
+            type="button"
+            variant="ghost"
+            className="mobile-scrim h-auto w-auto rounded-none p-0"
             aria-label="Fermer la navigation"
             onClick={() => setMenuOpen(false)}
           />

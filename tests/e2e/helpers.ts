@@ -75,3 +75,14 @@ export async function saveTask(page: Page) {
   await page.getByRole("button", { name: "Créer la tâche", exact: true }).click();
   await expect(page.getByTestId("editor-modal")).toHaveCount(0);
 }
+
+export async function setDateTime(page: Page, label: string, value: string) {
+  const [date, time] = value.split("T");
+  const timeLabel = `Heure de ${label.toLocaleLowerCase("fr")}`;
+  const calendarDay = new Intl.DateTimeFormat("fr-FR").format(new Date(`${date}T12:00:00`));
+
+  await page.getByRole("button", { name: label, exact: true }).click();
+  await page.locator(`[data-day="${calendarDay}"]`).click();
+  await page.getByRole("combobox", { name: timeLabel }).click();
+  await page.getByRole("option", { name: time, exact: true }).click();
+}

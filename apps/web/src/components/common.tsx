@@ -86,8 +86,10 @@ export function TaskRow({
       >
         {task.progress === 100 ? <Check /> : <span className="task-check" />}
       </Button>
-      <button
-        className="min-w-0 flex-1 text-left"
+      <Button
+        type="button"
+        variant="ghost"
+        className="h-auto min-w-0 flex-1 justify-start whitespace-normal p-0 text-left"
         onClick={() => openEditor({ type: "detail", taskId: task.id })}
       >
         <span className="block truncate font-semibold">{task.title}</span>
@@ -97,7 +99,7 @@ export function TaskRow({
           {overdue ? "En retard · " : "Pour le "}
           {formatDate(task.dueAt, timeZone)}
         </span>
-      </button>
+      </Button>
       <div className="hidden sm:block">
         <TaskTags task={task} />
       </div>

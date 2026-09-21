@@ -17,10 +17,10 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Spinner } from "@/components/ui/spinner";
-import { DatePicker, FormError, TagPicker } from "./fields";
+import { SelectControl } from "../select-control";
+import { DatePicker, FormError, TagPicker, TimePicker } from "./fields";
 
 export function TaskEditor({ task }: { task?: Task }) {
   const { snapshot, timeZone, now, closeEditor } = useWorkspace();
@@ -122,11 +122,12 @@ export function TaskEditor({ task }: { task?: Task }) {
                 <FieldLabel htmlFor="task-time">
                   Heure <span className="text-muted-foreground">· facultatif</span>
                 </FieldLabel>
-                <Input
+                <TimePicker
                   id="task-time"
-                  type="time"
                   value={field.state.value}
-                  onChange={(event) => field.handleChange(event.target.value)}
+                  onChange={field.handleChange}
+                  label="Heure de la date limite"
+                  allowClear
                 />
               </Field>
             )}
@@ -188,28 +189,27 @@ export function TaskEditor({ task }: { task?: Task }) {
             {(field) => (
               <Field>
                 <FieldLabel htmlFor="task-event">Préparer un événement</FieldLabel>
-                <NativeSelect
+                <SelectControl
                   id="task-event"
                   className="w-full"
-                  value={field.state.value}
-                  onChange={(event) => {
-                    field.handleChange(event.target.value);
-                    const linked = snapshot.events.find(
-                      (item) => item.id === event.target.value,
-                    );
+                  options={[
+                    { value: "none", label: "Aucun événement associé" },
+                    ...snapshot.events.map((event) => ({
+                      value: event.id,
+                      label: event.title,
+                    })),
+                  ]}
+                  value={field.state.value || "none"}
+                  onValueChange={(nextValue) => {
+                    const eventId = nextValue === "none" ? "" : nextValue;
+                    field.handleChange(eventId);
+                    const linked = snapshot.events.find((item) => item.id === eventId);
                     if (linked) {
                       form.setFieldValue("dueDate", localDate(linked.startAt, timeZone));
                       form.setFieldValue("dueTime", localTime(linked.startAt, timeZone));
                     }
                   }}
-                >
-                  <NativeSelectOption value="">Aucun événement associé</NativeSelectOption>
-                  {snapshot.events.map((event) => (
-                    <NativeSelectOption key={event.id} value={event.id}>
-                      {event.title}
-                    </NativeSelectOption>
-                  ))}
-                </NativeSelect>
+                />
               </Field>
             )}
           </form.Field>

@@ -1,11 +1,19 @@
 import { expect, test } from "@playwright/test";
 import { addCalendarDays, localDate } from "../../packages/contracts/src/domain";
 import { pixelsPerMinute, quarterHeight } from "../../apps/web/src/lib/calendar-layout";
-import { signUp, openTaskForm, saveTask } from "./helpers";
+import { signUp, openTaskForm, saveTask, setDateTime } from "./helpers";
 
 test("modal centré, aperçu à taille réelle, snap et redimensionnement sur la carte", async ({
   page,
 }) => {
+  const hydrationErrors: string[] = [];
+
+  page.on("console", (message) => {
+    if (/hydrated|server rendered html/i.test(message.text())) {
+      hydrationErrors.push(message.text());
+    }
+  });
+
   await page.setViewportSize({ width: 1440, height: 1100 });
   await signUp(page);
   await openTaskForm(page, "Séance de deux heures");
@@ -17,12 +25,13 @@ test("modal centré, aperçu à taille réelle, snap et redimensionnement sur la
   await saveTask(page);
   const date = addCalendarDays(localDate(new Date(), "Europe/Paris"), 1);
   await page.goto(`/calendrier?date=${date}`);
+  await page.reload();
   await page.getByRole("button", { name: "Jour", exact: true }).click();
   await page
     .getByRole("button", { name: "Planifier Séance de deux heures", exact: true })
     .click();
   await expect(page.getByLabel("Durée, en minutes")).toHaveValue("120");
-  await page.getByLabel("Début de la séance").fill(`${date}T10:00`);
+  await setDateTime(page, "Début de la séance", `${date}T10:00`);
   await page.getByRole("button", { name: "Planifier la séance", exact: true }).click();
   await expect(modal).toHaveCount(0);
   expect(
@@ -116,7 +125,10 @@ test("modal centré, aperçu à taille réelle, snap et redimensionnement sur la
   await page.mouse.up();
   await expect(modal).toBeVisible();
   await expect(page.getByLabel("Durée, en minutes")).toHaveValue("120");
-  await expect(page.getByLabel("Début de la séance")).toHaveValue(`${nextDate}T10:00`);
+  await expect(page.getByRole("group", { name: "Début de la séance" })).toHaveAttribute(
+    "data-value",
+    `${nextDate}T10:00`,
+  );
   await page.getByRole("button", { name: "Planifier la séance", exact: true }).click();
   await expect(modal).toHaveCount(0);
   await expect(target.getByTestId("session-card")).toContainText("Lecture à répartir");
@@ -128,4 +140,5 @@ test("modal centré, aperçu à taille réelle, snap et redimensionnement sur la
     backlogPreview!.width,
     0,
   );
+  expect(hydrationErrors).toEqual([]);
 });

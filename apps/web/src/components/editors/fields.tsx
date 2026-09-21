@@ -25,23 +25,57 @@ import {
   useComboboxAnchor,
 } from "@/components/ui/combobox";
 import { Field, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { SelectControl } from "../select-control";
+
+const timeOptions = Array.from({ length: 24 * 12 }, (_, index) => {
+  const hour = Math.floor(index / 12)
+    .toString()
+    .padStart(2, "0");
+  const minute = ((index % 12) * 5).toString().padStart(2, "0");
+  const value = `${hour}:${minute}`;
+
+  return { value, label: value };
+});
+
+function getTimeOptions(value: string, allowClear: boolean) {
+  const options = timeOptions.some((option) => option.value === value)
+    ? timeOptions
+    : [...timeOptions, { value, label: value }]
+        .filter((option) => /^([01]\d|2[0-3]):[0-5]\d$/.test(option.value))
+        .sort((first, second) => first.value.localeCompare(second.value));
+
+  if (!allowClear) {
+    return options;
+  }
+
+  return [{ value: "none", label: "Aucune heure" }, ...options];
+}
 
 export function DatePicker({
   value,
   onChange,
   id,
+  label,
 }: {
   value: string;
   onChange: (date: string) => void;
   id: string;
+  label?: string;
 }) {
   const [open, setOpen] = useState(false);
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
-        render={<Button id={id} variant="outline" className="w-full justify-start" />}
+        render={
+          <Button
+            id={id}
+            type="button"
+            variant="outline"
+            className="w-full justify-start"
+            aria-label={label}
+          />
+        }
       >
         <CalendarDays data-icon="inline-start" />
         {value ? format(parseISO(value), "d MMMM yyyy", { locale: fr }) : "Choisir une date"}
@@ -61,6 +95,32 @@ export function DatePicker({
         />
       </PopoverContent>
     </Popover>
+  );
+}
+
+export function TimePicker({
+  value,
+  onChange,
+  id,
+  label,
+  allowClear = false,
+}: {
+  value: string;
+  onChange: (time: string) => void;
+  id: string;
+  label: string;
+  allowClear?: boolean;
+}) {
+  return (
+    <SelectControl
+      id={id}
+      options={getTimeOptions(value, allowClear)}
+      value={value || (allowClear ? "none" : "")}
+      onValueChange={(nextValue) => onChange(nextValue === "none" ? "" : nextValue)}
+      label={label}
+      placeholder="Choisir une heure"
+      className="w-full"
+    />
   );
 }
 
@@ -159,14 +219,26 @@ export function DateTimeField({
 }) {
   return (
     <Field>
-      <FieldLabel htmlFor={id}>{label}</FieldLabel>
-      <Input
-        id={id}
-        type="datetime-local"
-        required
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-      />
+      <FieldLabel>{label}</FieldLabel>
+      <div
+        role="group"
+        aria-label={label}
+        data-value={value}
+        className="grid grid-cols-1 gap-3 sm:grid-cols-2"
+      >
+        <DatePicker
+          id={id}
+          label={label}
+          value={value.split("T")[0] ?? ""}
+          onChange={(date) => onChange(`${date}T${value.split("T")[1] ?? "09:00"}`)}
+        />
+        <TimePicker
+          id={`${id}-time`}
+          label={`Heure de ${label.toLocaleLowerCase("fr")}`}
+          value={value.split("T")[1] ?? ""}
+          onChange={(time) => onChange(`${value.split("T")[0]}T${time}`)}
+        />
+      </div>
     </Field>
   );
 }

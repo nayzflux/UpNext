@@ -9,7 +9,6 @@ import { useAction, useWorkspace } from "./workspace-context";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   Empty,
@@ -19,9 +18,19 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { ConfirmAction, PageHeading } from "./common";
-import { FormError } from "./editors/fields";
+import { FormError, TimePicker } from "./editors/fields";
+import { SelectControl } from "./select-control";
 
 const weekdays = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
+const timeZones = [
+  "Europe/Paris",
+  "Europe/Brussels",
+  "Europe/London",
+  "America/Montreal",
+  "America/New_York",
+  "Asia/Tokyo",
+  "UTC",
+];
 
 function TagSettingsRow({ tag }: { tag: Tag }) {
   const [name, setName] = useState(tag.name);
@@ -106,26 +115,13 @@ function PreferencesForm() {
         <FieldGroup>
           <Field>
             <FieldLabel htmlFor="timezone">Fuseau horaire</FieldLabel>
-            <Input
+            <SelectControl
               id="timezone"
-              list="timezones"
+              options={timeZones.map((zone) => ({ value: zone, label: zone }))}
               value={values.timeZone}
-              onChange={(event) => setValues({ ...values, timeZone: event.target.value })}
-              required
+              onValueChange={(timeZone) => setValues({ ...values, timeZone })}
+              className="w-full"
             />
-            <datalist id="timezones">
-              {[
-                "Europe/Paris",
-                "Europe/Brussels",
-                "Europe/London",
-                "America/Montreal",
-                "America/New_York",
-                "Asia/Tokyo",
-                "UTC",
-              ].map((zone) => (
-                <option key={zone} value={zone} />
-              ))}
-            </datalist>
             <FieldDescription>
               Les événements hebdomadaires existants conservent leur fuseau d’origine.
             </FieldDescription>
@@ -140,35 +136,30 @@ function PreferencesForm() {
             <div className="flex flex-col gap-3">
               {values.availability.map((window, index) => (
                 <div className="availability-row" key={index}>
-                  <NativeSelect
-                    aria-label={`Jour de la plage ${index + 1}`}
-                    value={window.weekday}
-                    onChange={(event) =>
-                      updateWindow(index, { weekday: Number(event.target.value) })
+                  <SelectControl
+                    label={`Jour de la plage ${index + 1}`}
+                    options={weekdays.map((day, i) => ({
+                      value: String(i + 1),
+                      label: day,
+                    }))}
+                    value={String(window.weekday)}
+                    onValueChange={(weekday) =>
+                      updateWindow(index, { weekday: Number(weekday) })
                     }
-                  >
-                    {weekdays.map((day, i) => (
-                      <NativeSelectOption key={day} value={i + 1}>
-                        {day}
-                      </NativeSelectOption>
-                    ))}
-                  </NativeSelect>
-                  <Input
-                    aria-label={`Début de la plage ${index + 1}`}
-                    type="time"
-                    required
+                    className="w-full"
+                  />
+                  <TimePicker
+                    id={`availability-${index}-start`}
+                    label={`Début de la plage ${index + 1}`}
                     value={window.startTime}
-                    onChange={(event) =>
-                      updateWindow(index, { startTime: event.target.value })
-                    }
+                    onChange={(startTime) => updateWindow(index, { startTime })}
                   />
                   <span>à</span>
-                  <Input
-                    aria-label={`Fin de la plage ${index + 1}`}
-                    type="time"
-                    required
+                  <TimePicker
+                    id={`availability-${index}-end`}
+                    label={`Fin de la plage ${index + 1}`}
                     value={window.endTime}
-                    onChange={(event) => updateWindow(index, { endTime: event.target.value })}
+                    onChange={(endTime) => updateWindow(index, { endTime })}
                   />
                   <Button
                     type="button"

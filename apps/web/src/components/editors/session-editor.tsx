@@ -21,11 +21,11 @@ import { useAction, useWorkspace } from "../workspace-context";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Spinner } from "@/components/ui/spinner";
 import { DateTimeField, FormError } from "./fields";
+import { SelectControl } from "../select-control";
 
 export function SessionEditor({
   taskId,
@@ -119,27 +119,24 @@ export function SessionEditor({
       <FieldGroup>
         <Field>
           <FieldLabel htmlFor="session-task">La tâche à avancer</FieldLabel>
-          <NativeSelect
+          <SelectControl
             id="session-task"
             className="w-full"
-            value={selectedTaskId}
-            onChange={(event) => {
-              setSelectedTaskId(event.target.value);
+            options={[
+              { value: "none", label: "Choisir une tâche", disabled: true },
+              ...snapshot.tasks
+                .filter((task) => task.progress < 100)
+                .map((task) => ({ value: task.id, label: task.title })),
+            ]}
+            value={selectedTaskId || "none"}
+            onValueChange={(nextValue) => {
+              if (nextValue === "none") {
+                return;
+              }
+              setSelectedTaskId(nextValue);
               setShowSuggestions(false);
             }}
-            required
-          >
-            <NativeSelectOption value="" disabled>
-              Choisir une tâche
-            </NativeSelectOption>
-            {snapshot.tasks
-              .filter((task) => task.progress < 100)
-              .map((task) => (
-                <NativeSelectOption key={task.id} value={task.id}>
-                  {task.title}
-                </NativeSelectOption>
-              ))}
-          </NativeSelect>
+          />
         </Field>
         <DateTimeField
           id="session-start"
