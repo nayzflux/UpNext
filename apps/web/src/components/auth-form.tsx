@@ -31,7 +31,10 @@ function authenticationError(error: { code?: string; status?: number }, fallback
   if (error.code === "EMAIL_NOT_VERIFIED") {
     return "Confirme ton adresse email avant de te connecter.";
   }
-  if (error.code === "USER_ALREADY_EXISTS" || error.code === "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL") {
+  if (
+    error.code === "USER_ALREADY_EXISTS" ||
+    error.code === "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL"
+  ) {
     return "Cette adresse possède déjà un compte. Connecte-toi pour retrouver ton espace.";
   }
   return fallback;
@@ -54,7 +57,12 @@ export function AuthForm({ mode, token }: { mode: Mode; token?: string }) {
             callbackURL: "/aujourdhui",
           });
           if (result.error)
-            throw new Error(authenticationError(result.error, "Impossible de créer le compte. Réessaie dans un instant."));
+            throw new Error(
+              authenticationError(
+                result.error,
+                "Impossible de créer le compte. Réessaie dans un instant.",
+              ),
+            );
           setSuccess(
             "Un email de confirmation t’attend. Ouvre son lien pour accéder à ton espace.",
           );
@@ -74,7 +82,13 @@ export function AuthForm({ mode, token }: { mode: Mode; token?: string }) {
             email: value.email,
             redirectTo: "/nouveau-mot-de-passe",
           });
-          if (result.error) throw new Error(authenticationError(result.error, "Impossible d’envoyer le lien. Réessaie dans un instant."));
+          if (result.error)
+            throw new Error(
+              authenticationError(
+                result.error,
+                "Impossible d’envoyer le lien. Réessaie dans un instant.",
+              ),
+            );
           setSuccess(
             "Si cette adresse possède un compte, un lien de réinitialisation vient d’être envoyé.",
           );
@@ -100,7 +114,13 @@ export function AuthForm({ mode, token }: { mode: Mode; token?: string }) {
         email: form.getFieldValue("email"),
         callbackURL: "/aujourdhui",
       });
-      if (result.error) throw new Error(authenticationError(result.error, "Impossible d’envoyer l’email. Réessaie dans un instant."));
+      if (result.error)
+        throw new Error(
+          authenticationError(
+            result.error,
+            "Impossible d’envoyer l’email. Réessaie dans un instant.",
+          ),
+        );
       setSuccess("Un nouvel email de confirmation a été envoyé.");
     } catch (error) {
       setError(errorMessage(error));
