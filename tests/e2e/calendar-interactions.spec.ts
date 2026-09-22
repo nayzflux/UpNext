@@ -91,6 +91,7 @@ test("modal centré, aperçu à taille réelle, snap et redimensionnement sur la
   const mainButton = card.getByRole("button", { name: /Déplacer ou ouvrir/ });
   await mainButton.focus();
   await page.keyboard.press("Space");
+  await expect(preview).toBeVisible();
   await page.keyboard.press("ArrowDown");
   await expect(preview).toContainText("10:45–13:15");
   await page.keyboard.press("Escape");
