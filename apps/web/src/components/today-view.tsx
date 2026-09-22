@@ -2,7 +2,16 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { CalendarClock, CalendarPlus, Check, ChevronRight, Clock3, Plus } from "lucide-react";
+import {
+  ArrowRight,
+  CalendarClock,
+  CalendarPlus,
+  Check,
+  ChevronRight,
+  Clock3,
+  Plus,
+  Sun,
+} from "lucide-react";
 import {
   addCalendarDays,
   expandEvents,
@@ -54,8 +63,13 @@ export function TodayView() {
     enabled: snapshot.calendarSources.length > 0,
   });
   const active = snapshot.tasks.filter((task) => task.progress < 100);
+  const tasksToDo = [...active].sort((a, b) => a.dueAt.localeCompare(b.dueAt));
   const due = groupDueTasks(snapshot.tasks, now, timeZone);
   const sessions = sessionsForDay(snapshot.sessions, today, timeZone);
+  const sessionMinutes = sessions.reduce(
+    (total, session) => total + minutesBetween(session.startAt, session.endAt),
+    0,
+  );
   const events = [
     ...expandEvents(snapshot.events, start, end),
     ...(snapshot.calendarSources.length ? (imported.data ?? []) : []),
@@ -130,31 +144,41 @@ export function TodayView() {
         </p>
       )}
 
-      <section className="surface today-attention" aria-labelledby="today-attention-title">
-        <div className="today-attention-main">
-          <p className="eyebrow">ÉCHÉANCES</p>
-          <div className="today-attention-total">
-            <strong>{due.attention.length}</strong>
-            <div>
-              <h2 id="today-attention-title">
-                {due.attention.length === 1 ? "tâche à traiter" : "tâches à traiter"}
-              </h2>
-              <p>
-                {due.attention.length
-                  ? "Les échéances qui demandent ton attention maintenant."
-                  : "Rien ne presse aujourd’hui."}
-              </p>
-            </div>
-          </div>
+      <section className="day-intro" aria-labelledby="day-intro-title">
+        <div className="day-intro-copy">
+          <p className="eyebrow">AUJOURD’HUI</p>
+          <h2 id="day-intro-title">Une journée qui te ressemble.</h2>
+          <p>
+            {sessions.length
+              ? `${sessions.length} ${sessions.length === 1 ? "séance" : "séances"} pour ${duration(sessionMinutes)} au total.`
+              : "Aucune séance prévue pour le moment."}
+          </p>
+          <Link href={`/calendrier?date=${today}`}>
+            Voir ma journée
+            <ArrowRight className="size-4" />
+          </Link>
         </div>
-        <dl className="today-attention-breakdown">
+        <div className="day-intro-symbol" aria-hidden="true">
+          <Sun />
+        </div>
+        <dl className="day-intro-stats">
           <div>
-            <dt>Aujourd’hui</dt>
-            <dd>{due.dueToday.length}</dd>
+            <dt>Séances</dt>
+            <dd>
+              <strong>{sessions.length}</strong>
+              <small>
+                {sessionMinutes ? duration(sessionMinutes) : "Aucun temps réservé"}
+              </small>
+            </dd>
           </div>
           <div>
-            <dt>En retard</dt>
-            <dd>{due.overdue.length}</dd>
+            <dt>À rendre</dt>
+            <dd>
+              <strong>{due.attention.length}</strong>
+              <small>
+                {due.attention.length ? "Aujourd’hui ou en retard" : "Rien d’urgent"}
+              </small>
+            </dd>
           </div>
         </dl>
       </section>
@@ -163,7 +187,7 @@ export function TodayView() {
         <section className="min-w-0">
           <div className="section-heading">
             <h2>
-              À échéance <span>{due.attention.length}</span>
+              Tâches à faire <span>{tasksToDo.length}</span>
             </h2>
             <Link href="/taches">
               Toutes les tâches
@@ -171,15 +195,13 @@ export function TodayView() {
             </Link>
           </div>
           <div className="surface">
-            {due.attention.length ? (
-              due.attention.slice(0, 5).map((task) => <TaskRow key={task.id} task={task} />)
+            {tasksToDo.length ? (
+              tasksToDo.slice(0, 5).map((task) => <TaskRow key={task.id} task={task} />)
             ) : (
               <Empty className="today-empty">
                 <EmptyHeader>
-                  <EmptyTitle>Aucune échéance à rattraper</EmptyTitle>
-                  <EmptyDescription>
-                    Tu peux avancer sur la suite sans urgence.
-                  </EmptyDescription>
+                  <EmptyTitle>Tout est terminé</EmptyTitle>
+                  <EmptyDescription>Tu n’as plus de tâche active à faire.</EmptyDescription>
                 </EmptyHeader>
               </Empty>
             )}

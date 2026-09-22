@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { localDate, localTime } from "../../packages/contracts/src/domain";
 import { openTaskForm, saveTask, setDateTime, signUp } from "./helpers";
 
-test("la page Aujourd’hui hiérarchise échéances, planning et calendrier", async ({ page }) => {
+test("la page Aujourd’hui hiérarchise tâches, séances et calendrier", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1100 });
   await signUp(page);
 
@@ -31,8 +31,15 @@ test("la page Aujourd’hui hiérarchise échéances, planning et calendrier", a
     await page.getByRole("button", { name: "Planifier la séance", exact: true }).click();
   }
 
-  await expect(page.locator(".today-attention-total > strong")).toHaveText("1");
-  await expect(page.getByRole("heading", { name: /À échéance/ })).toBeVisible();
+  const dueMetric = page.locator(".day-intro-stats > div").filter({ hasText: "À rendre" });
+  await expect(dueMetric.locator("dd > strong")).toHaveText("1");
+  await expect(page.getByRole("heading", { name: /Tâches à faire/ })).toBeVisible();
+  await expect(
+    page
+      .locator(".today-primary-grid > section")
+      .first()
+      .getByText("Rendre le dossier aujourd’hui"),
+  ).toBeVisible();
   await expect(page.getByRole("heading", { name: /Séances du jour/ })).toBeVisible();
   await expect(page.getByRole("heading", { name: /À planifier/ })).toBeVisible();
   await expect(page.getByRole("heading", { name: "La suite aujourd’hui" })).toBeVisible();

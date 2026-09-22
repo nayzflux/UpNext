@@ -422,64 +422,94 @@
   flex-direction: column;
   gap: 32px;
 }
-.today-attention {
-  display: flex;
-  align-items: stretch;
-  justify-content: space-between;
-  overflow: hidden;
-}
-.today-attention-main {
-  flex: 1;
-  padding: 22px 24px;
-}
-.today-attention-total {
+.day-intro {
   display: flex;
   align-items: center;
-  gap: 17px;
-  margin-top: 9px;
+  gap: 25px;
+  background: var(--accent);
+  border: 1px solid color-mix(in oklch, var(--primary) 18%, var(--border));
+  border-radius: 15px;
+  overflow: hidden;
 }
-.today-attention-total > strong {
-  min-width: 52px;
-  font-size: 42px;
-  font-weight: 560;
-  line-height: 1;
-  letter-spacing: -2px;
+.day-intro-copy {
+  flex: 1;
+  min-width: 0;
+  padding: 28px 0 28px 30px;
+}
+.day-intro h2 {
+  margin-top: 7px;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.55px;
+}
+.day-intro-copy > p:not(.eyebrow) {
+  max-width: 410px;
+  margin-top: 9px;
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--muted-foreground);
+}
+.day-intro-copy > a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 16px;
+  font-size: 11px;
+  font-weight: 700;
   color: var(--primary);
 }
-.today-attention-total h2 {
-  font-size: 16px;
-  font-weight: 700;
-  letter-spacing: -0.35px;
+.day-intro-symbol {
+  flex: 0 0 auto;
+  color: var(--primary);
+  opacity: 0.22;
+  transform: rotate(-9deg);
 }
-.today-attention-total p {
-  margin-top: 4px;
-  font-size: 11px;
-  color: var(--muted-foreground);
+.day-intro-symbol svg {
+  width: 78px;
+  height: 78px;
+  stroke-width: 0.85;
 }
-.today-attention-breakdown {
+.day-intro-stats {
+  align-self: stretch;
   display: grid;
-  grid-template-columns: repeat(2, minmax(105px, 1fr));
-  background: var(--accent);
-  border-left: 1px solid var(--border);
+  grid-template-columns: repeat(2, minmax(124px, 1fr));
+  background: color-mix(in oklch, var(--card) 32%, transparent);
+  border-left: 1px solid color-mix(in oklch, var(--primary) 14%, transparent);
 }
-.today-attention-breakdown > div {
+.day-intro-stats > div {
   display: flex;
-  flex-direction: column-reverse;
+  flex-direction: column;
   justify-content: center;
-  gap: 4px;
-  padding: 20px 24px;
+  gap: 5px;
+  padding: 20px 25px;
 }
-.today-attention-breakdown > div + div {
+.day-intro-stats > div + div {
   border-left: 1px solid color-mix(in oklch, var(--primary) 15%, transparent);
 }
-.today-attention-breakdown dt {
-  font-size: 10px;
+.day-intro-stats dt {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
   color: var(--muted-foreground);
 }
-.today-attention-breakdown dd {
-  font-size: 25px;
+.day-intro-stats dd {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.day-intro-stats dd > strong {
+  font-size: 28px;
   font-weight: 600;
-  letter-spacing: -0.8px;
+  line-height: 1;
+  letter-spacing: -1px;
+  color: var(--primary);
+}
+.day-intro-stats dd > small {
+  max-width: 120px;
+  font-size: 10px;
+  line-height: 1.35;
+  color: var(--muted-foreground);
 }
 .today-primary-grid {
   display: grid;
@@ -1332,6 +1362,9 @@
   }
 }
 @media (max-width: 900px) {
+  .day-intro-symbol {
+    display: none;
+  }
   .today-primary-grid {
     grid-template-columns: 1fr;
   }
@@ -1363,25 +1396,28 @@
   .today-page {
     gap: 27px;
   }
-  .today-attention {
-    flex-direction: column;
+  .day-intro {
+    flex-wrap: wrap;
+    gap: 0;
   }
-  .today-attention-main {
-    padding: 19px 20px;
+  .day-intro-copy {
+    flex-basis: 100%;
+    padding: 22px;
   }
-  .today-attention-total > strong {
-    min-width: 44px;
-    font-size: 36px;
+  .day-intro h2 {
+    font-size: 20px;
   }
-  .today-attention-breakdown {
-    border-top: 1px solid var(--border);
+  .day-intro-stats {
+    width: 100%;
     border-left: 0;
+    border-top: 1px solid color-mix(in oklch, var(--primary) 14%, transparent);
   }
-  .today-attention-breakdown > div {
-    padding: 14px 20px;
+  .day-intro-stats > div {
+    min-width: 0;
+    padding: 15px 20px;
   }
-  .today-attention-breakdown dd {
-    font-size: 21px;
+  .day-intro-stats dd > strong {
+    font-size: 23px;
   }
   .today-planning-list {
     grid-template-columns: 1fr;
