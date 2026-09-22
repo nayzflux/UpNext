@@ -216,6 +216,7 @@ export const studySessions = pgTable(
       .notNull()
       .default("planned"),
     cancellationReason: text("cancellation_reason").$type<"manual" | "task-completed">(),
+    archivedAt: timestamp("archived_at", { withTimezone: true, mode: "string" }),
     revision: integer("revision").notNull().default(0),
   },
   (table) => [

@@ -11,6 +11,7 @@ import {
 } from "./calendar-sources";
 import {
   cancelSession,
+  deleteSession,
   deleteEvent,
   deleteTag,
   deleteTask,
@@ -66,6 +67,9 @@ export const router = implementation.router({
     cancel: authenticated.sessions.cancel.handler(({ context, input }) =>
       cancelSession(context.userId, input.id, input.revision),
     ),
+    delete: authenticated.sessions.delete.handler(({ context, input }) =>
+      deleteSession(context.userId, input.id, input.revision),
+    ),
   },
   logs: {
     save: authenticated.logs.save.handler(({ context, input }) =>
@@ -99,8 +103,13 @@ export const router = implementation.router({
   },
   importedEvents: {
     list: authenticated.importedEvents.list.handler(({ context, input }) => {
-      if (new Date(input.endAt).getTime() - new Date(input.startAt).getTime() > 45 * 86400000) {
-        throw new ORPCError("BAD_REQUEST", { message: "La période demandée dépasse 45 jours." });
+      if (
+        new Date(input.endAt).getTime() - new Date(input.startAt).getTime() >
+        45 * 86400000
+      ) {
+        throw new ORPCError("BAD_REQUEST", {
+          message: "La période demandée dépasse 45 jours.",
+        });
       }
       return getImportedEvents(context.userId, input.startAt, input.endAt);
     }),
@@ -115,11 +124,19 @@ export const router = implementation.router({
       const snapshot = await getSnapshot(context.userId);
       const task = snapshot.tasks.find((task) => task.id === input.taskId);
       if (!task) throw new ORPCError("NOT_FOUND");
-      const endAt = new Date(Math.min(new Date(task.dueAt).getTime(), Date.now() + 28 * 86400000)).toISOString();
-      const importedEvents = endAt > new Date().toISOString()
-        ? await getImportedEvents(context.userId, new Date().toISOString(), endAt)
-        : [];
-      return suggestSlots({ ...snapshot, importedEvents, task, durationMinutes: input.durationMinutes });
+      const endAt = new Date(
+        Math.min(new Date(task.dueAt).getTime(), Date.now() + 28 * 86400000),
+      ).toISOString();
+      const importedEvents =
+        endAt > new Date().toISOString()
+          ? await getImportedEvents(context.userId, new Date().toISOString(), endAt)
+          : [];
+      return suggestSlots({
+        ...snapshot,
+        importedEvents,
+        task,
+        durationMinutes: input.durationMinutes,
+      });
     }),
   },
 });

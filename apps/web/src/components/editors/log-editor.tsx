@@ -98,7 +98,9 @@ export function LogEditor({
         <p className="mt-1 text-xs text-muted-foreground">
           {session
             ? `${duration(minutesBetween(session.startAt, session.endAt))} prévues pour cette séance`
-            : "Travail réalisé sans réservation"}
+            : log?.sessionId
+              ? "Séance archivée"
+              : "Travail réalisé sans réservation"}
         </p>
       </div>
       <FieldGroup>

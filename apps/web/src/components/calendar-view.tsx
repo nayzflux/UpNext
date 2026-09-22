@@ -57,8 +57,10 @@ import { Badge } from "@/components/ui/badge";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { toast } from "@/components/ui/toast";
+import { SelectControl } from "./select-control";
 import { PageHeading } from "./common";
-import { BacklogTask, DayColumn } from "./calendar-grid";
+import { BacklogTask, DayColumn, SessionContextMenu } from "./calendar-grid";
+import { DeleteSessionAlert } from "./delete-session-alert";
 
 export function CalendarView() {
   const { snapshot, now, timeZone, openEditor } = useWorkspace();
@@ -76,6 +78,9 @@ export function CalendarView() {
   const [preview, setPreview] = useState<CalendarPreview | null>(null);
   const [fullDay, setFullDay] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [contentFilter, setContentFilter] = useState("all");
+  const [tagFilter, setTagFilter] = useState("all");
+  const [sessionToDelete, setSessionToDelete] = useState<Session | null>(null);
   const grid = useRef<HTMLDivElement>(null);
   const pointer = useRef<{ x: number; y: number } | null>(null);
   const isPointerDrag = useRef(false);
@@ -117,20 +122,50 @@ export function CalendarView() {
   );
   const rangeStart = zonedInstant(firstDate, "00:00", timeZone);
   const rangeEnd = zonedInstant(addCalendarDays(firstDate, dayCount), "00:00", timeZone);
+  const showTasks = contentFilter !== "events";
+  const showEvents = contentFilter !== "tasks";
   const imported = useQuery({
     queryKey: ["imported-events", rangeStart, rangeEnd],
     queryFn: () => api.importedEvents.list({ startAt: rangeStart, endAt: rangeEnd }),
-    enabled: snapshot.calendarSources.length > 0,
+    enabled: showEvents && snapshot.calendarSources.length > 0,
   });
   const occurrences = useMemo(
-    () => [
-      ...expandEvents(snapshot.events, rangeStart, rangeEnd),
-      ...(snapshot.calendarSources.length ? (imported.data ?? []) : []),
+    () =>
+      showEvents
+        ? [
+            ...expandEvents(snapshot.events, rangeStart, rangeEnd),
+            ...(snapshot.calendarSources.length ? (imported.data ?? []) : []),
+          ]
+        : [],
+    [
+      showEvents,
+      snapshot.events,
+      snapshot.calendarSources.length,
+      imported.data,
+      rangeStart,
+      rangeEnd,
     ],
-    [snapshot.events, snapshot.calendarSources.length, imported.data, rangeStart, rangeEnd],
   );
-  const activeSessions = snapshot.sessions.filter((session) => session.status !== "cancelled");
-  const backlog = snapshot.tasks
+  const filteredTasks = useMemo(() => {
+    if (!showTasks) return [];
+    if (tagFilter === "all") return snapshot.tasks;
+    if (tagFilter === "none") {
+      return snapshot.tasks.filter((task) => task.tagIds.length === 0);
+    }
+    return snapshot.tasks.filter((task) => task.tagIds.includes(tagFilter));
+  }, [showTasks, snapshot.tasks, tagFilter]);
+  const filteredTaskIds = useMemo(
+    () => new Set(filteredTasks.map((task) => task.id)),
+    [filteredTasks],
+  );
+  const activeSessions = useMemo(
+    () =>
+      snapshot.sessions.filter(
+        (session) => session.status !== "cancelled" && filteredTaskIds.has(session.taskId),
+      ),
+    [snapshot.sessions, filteredTaskIds],
+  );
+  const backlog = filteredTasks
     .filter(
       (task) =>
         task.progress < 100 &&
@@ -398,11 +433,35 @@ export function CalendarView() {
           Séance
         </Button>
       </PageHeading>
-      {imported.isError && (
+      {showEvents && imported.isError && (
         <p className="text-sm text-destructive" role="alert">
           Impossible de charger les calendriers externes : {errorMessage(imported.error)}
         </p>
       )}
+      <div className="filter-bar">
+        <ToggleGroup
+          aria-label="Filtrer le contenu du calendrier"
+          value={[contentFilter]}
+          onValueChange={(values) => {
+            if (values[0]) setContentFilter(values[0]);
+          }}
+        >
+          <ToggleGroupItem value="all">Tout</ToggleGroupItem>
+          <ToggleGroupItem value="tasks">Tâches</ToggleGroupItem>
+          <ToggleGroupItem value="events">Événements</ToggleGroupItem>
+        </ToggleGroup>
+        <SelectControl
+          label="Filtrer le calendrier par tag"
+          options={[
+            { value: "all", label: "Tous les tags" },
+            { value: "none", label: "Sans tag" },
+            ...snapshot.tags.map((tag) => ({ value: tag.id, label: tag.name })),
+          ]}
+          value={tagFilter}
+          disabled={!showTasks}
+          onValueChange={setTagFilter}
+        />
+      </div>
       <DndContext
         id={dndContextId}
         sensors={sensors}
@@ -417,39 +476,46 @@ export function CalendarView() {
         onDragCancel={cancelDrag}
         onDragEnd={dragEnd}
       >
-        <div className="calendar-layout">
-          <aside className="calendar-backlog">
-            <div className="flex items-center justify-between">
-              <h2 className="font-semibold">À planifier</h2>
-              <Badge variant="secondary">{backlog.length}</Badge>
-            </div>
-            <p className="mt-2 mb-5 text-xs leading-relaxed text-muted-foreground">
-              Glisse une tâche dans ton agenda ou choisis son créneau.
-            </p>
-            <div className="flex flex-col gap-3">
-              {backlog.map((task) => (
-                <BacklogTask key={task.id} task={task} displayedDate={date} mobile={mobile} />
-              ))}
-              {backlog.length === 0 && (
-                <Empty className="px-2 py-8">
-                  <EmptyHeader>
-                    <EmptyTitle>Tout a sa place</EmptyTitle>
-                    <EmptyDescription>
-                      Les tâches encore à planifier apparaîtront ici.
-                    </EmptyDescription>
-                  </EmptyHeader>
-                </Empty>
-              )}
-            </div>
-            <Button
-              className="mt-5 w-full"
-              variant="outline"
-              onClick={() => openEditor({ type: "task" })}
-            >
-              <Plus data-icon="inline-start" />
-              Nouvelle tâche
-            </Button>
-          </aside>
+        <div className={cn("calendar-layout", !showTasks && "calendar-layout-no-backlog")}>
+          {showTasks && (
+            <aside className="calendar-backlog">
+              <div className="flex items-center justify-between">
+                <h2 className="font-semibold">À planifier</h2>
+                <Badge variant="secondary">{backlog.length}</Badge>
+              </div>
+              <p className="mt-2 mb-5 text-xs leading-relaxed text-muted-foreground">
+                Glisse une tâche dans ton agenda ou choisis son créneau.
+              </p>
+              <div className="flex flex-col gap-3">
+                {backlog.map((task) => (
+                  <BacklogTask
+                    key={task.id}
+                    task={task}
+                    displayedDate={date}
+                    mobile={mobile}
+                  />
+                ))}
+                {backlog.length === 0 && (
+                  <Empty className="px-2 py-8">
+                    <EmptyHeader>
+                      <EmptyTitle>Tout a sa place</EmptyTitle>
+                      <EmptyDescription>
+                        Les tâches encore à planifier apparaîtront ici.
+                      </EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
+                )}
+              </div>
+              <Button
+                className="mt-5 w-full"
+                variant="outline"
+                onClick={() => openEditor({ type: "task" })}
+              >
+                <Plus data-icon="inline-start" />
+                Nouvelle tâche
+              </Button>
+            </aside>
+          )}
           <section className="calendar-surface">
             <div className="calendar-toolbar">
               <div className="flex items-center gap-1">
@@ -521,7 +587,7 @@ export function CalendarView() {
                 ))}
                 {dates.map((day) => {
                   const blocks = blocksFor(day);
-                  const deadlines = snapshot.tasks.filter(
+                  const deadlines = filteredTasks.filter(
                     (task) => localDate(task.dueAt, timeZone) === day && task.progress < 100,
                   );
                   return (
@@ -545,31 +611,48 @@ export function CalendarView() {
                       >
                         {Number(day.slice(-2))}
                       </Button>
-                      {blocks.slice(0, 3).map((block) => (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          key={block.id}
-                          className={block.session ? "month-session" : "month-event"}
-                          onClick={() =>
-                            block.session
-                              ? block.session.status === "expired" ||
-                                (block.session.status === "planned" &&
-                                  new Date(block.session.endAt) <= now)
-                                ? openEditor({
-                                    type: "log",
-                                    taskId: block.session.taskId,
-                                    sessionId: block.session.id,
-                                  })
-                                : openEditor({ type: "detail", taskId: block.session.taskId })
-                              : block.event && "sourceId" in block.event
-                                ? openEditor({ type: "importedEvent", event: block.event })
-                                : openEditor({ type: "event", eventId: block.event!.id })
-                          }
-                        >
-                          {block.title}
-                        </Button>
-                      ))}
+                      {blocks.slice(0, 3).map((block) => {
+                        const button = (
+                          <Button
+                            key={block.id}
+                            type="button"
+                            variant="ghost"
+                            className={block.session ? "month-session" : "month-event"}
+                            onClick={() =>
+                              block.session
+                                ? block.session.status === "expired" ||
+                                  (block.session.status === "planned" &&
+                                    new Date(block.session.endAt) <= now)
+                                  ? openEditor({
+                                      type: "log",
+                                      taskId: block.session.taskId,
+                                      sessionId: block.session.id,
+                                    })
+                                  : openEditor({
+                                      type: "detail",
+                                      taskId: block.session.taskId,
+                                    })
+                                : block.event && "sourceId" in block.event
+                                  ? openEditor({ type: "importedEvent", event: block.event })
+                                  : openEditor({ type: "event", eventId: block.event!.id })
+                            }
+                          >
+                            {block.title}
+                          </Button>
+                        );
+
+                        return block.session ? (
+                          <SessionContextMenu
+                            key={block.id}
+                            session={block.session}
+                            onDelete={setSessionToDelete}
+                          >
+                            {button}
+                          </SessionContextMenu>
+                        ) : (
+                          button
+                        );
+                      })}
                       {deadlines.slice(0, 1).map((task) => (
                         <Button
                           type="button"
@@ -625,7 +708,7 @@ export function CalendarView() {
                       </span>
                       <strong>{Number(day.slice(-2))}</strong>
                       <span className="day-deadlines">
-                        {snapshot.tasks
+                        {filteredTasks
                           .filter(
                             (task) =>
                               task.progress < 100 && localDate(task.dueAt, timeZone) === day,
@@ -665,6 +748,7 @@ export function CalendarView() {
                         movingSessionId={
                           preview?.kind === "session" ? preview.sessionId : undefined
                         }
+                        onDeleteSession={setSessionToDelete}
                       />
                     ))}
                   </div>
@@ -689,6 +773,15 @@ export function CalendarView() {
             `${formatDate(preview.startAt, timeZone, "EEEE HH:mm")} à ${formatDate(preview.endAt, timeZone, "HH:mm")}, ${duration(minutesBetween(preview.startAt, preview.endAt))}`}
         </div>
       </DndContext>
+      {sessionToDelete && (
+        <DeleteSessionAlert
+          session={sessionToDelete}
+          open
+          onOpenChange={(open) => {
+            if (!open) setSessionToDelete(null);
+          }}
+        />
+      )}
     </div>
   );
 }

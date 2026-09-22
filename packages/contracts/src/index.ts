@@ -44,6 +44,7 @@ export const contract = {
   sessions: {
     save: oc.input(sessionInputSchema).output(sessionSchema),
     cancel: oc.input(z.object({ id: idSchema, revision: z.number().int() })).output(deleted),
+    delete: oc.input(z.object({ id: idSchema, revision: z.number().int() })).output(deleted),
   },
   logs: {
     save: oc
@@ -56,10 +57,15 @@ export const contract = {
   },
   calendarSources: {
     create: oc.input(calendarSourceInputSchema).output(calendarSourceSchema),
-    rename: oc.input(z.object({ id: idSchema, name: z.string().trim().min(1).max(100) })).output(calendarSourceSchema),
+    rename: oc
+      .input(z.object({ id: idSchema, name: z.string().trim().min(1).max(100) }))
+      .output(calendarSourceSchema),
     delete: oc.input(identified).output(deleted),
     syncDue: oc.route({ method: "POST" }).output(z.array(calendarSourceSchema)),
-    sync: oc.route({ method: "POST" }).input(z.object({ id: idSchema.optional() })).output(z.array(calendarSourceSchema)),
+    sync: oc
+      .route({ method: "POST" })
+      .input(z.object({ id: idSchema.optional() }))
+      .output(z.array(calendarSourceSchema)),
   },
   importedEvents: {
     list: oc.input(importedEventRangeSchema).output(z.array(importedEventSchema)),

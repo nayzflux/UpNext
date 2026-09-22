@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import {
   eventSchema,
   preferencesSchema,
@@ -71,7 +71,7 @@ export async function getSnapshot(
   const sessionRows = await connection
     .select()
     .from(studySessions)
-    .where(eq(studySessions.userId, userId));
+    .where(and(eq(studySessions.userId, userId), isNull(studySessions.archivedAt)));
   const logRows = await connection.select().from(workLogs).where(eq(workLogs.userId, userId));
   const eventRows = await connection.select().from(events).where(eq(events.userId, userId));
   const sourceRows = await connection

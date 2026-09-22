@@ -133,6 +133,7 @@ test("une séance terminée reste prévue pendant la grâce et s'ouvre sur son b
     })
     .click();
   const pastStart = new Date(Date.now() - 3 * 60 * 60 * 1000);
+  pastStart.setMinutes(Math.floor(pastStart.getMinutes() / 5) * 5, 0, 0);
   const pastDate = localDate(pastStart, "Europe/Paris");
   const pastTime = localTime(pastStart, "Europe/Paris");
   await setDateTime(page, "Début de la séance", `${pastDate}T${pastTime}`);

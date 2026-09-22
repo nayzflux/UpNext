@@ -3,13 +3,14 @@
 import { CalendarPlus, Check, Clock3, Pencil, Trash2 } from "lucide-react";
 import { getTaskMetrics, minutesBetween, type Task } from "@upnext/contracts";
 import { api } from "@/lib/api";
-import { duration, formatDate, priorityLabels } from "@/lib/format";
+import { duration, formatDate } from "@/lib/format";
 import { useAction, useWorkspace } from "../workspace-context";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ConfirmAction, PlanningBadge, TaskTags } from "../common";
+import { PriorityBadge } from "../priority-badge";
+import { DeleteSessionAlert } from "../delete-session-alert";
 
 export function TaskDetail({ task }: { task: Task }) {
   const { snapshot, timeZone, now, openEditor, closeEditor } = useWorkspace();
@@ -26,9 +27,7 @@ export function TaskDetail({ task }: { task: Task }) {
         <TaskTags task={task} />
         <div className="flex items-center gap-2">
           <PlanningBadge status={metrics.planning} />
-          <Badge variant="outline">
-            Priorité {priorityLabels[task.priority].toLowerCase()}
-          </Badge>
+          <PriorityBadge priority={task.priority} withPrefix />
         </div>
       </div>
       {task.notes && (
@@ -128,68 +127,57 @@ export function TaskDetail({ task }: { task: Task }) {
                             : "Annulée"}
                   </p>
                 </div>
-                {session.status === "planned" && new Date(session.endAt) > now && (
-                  <div className="flex gap-1">
+                <div className="flex items-center gap-1">
+                  {session.status === "planned" && new Date(session.endAt) > now && (
+                    <>
+                      <Button
+                        size="icon-sm"
+                        variant="ghost"
+                        aria-label="Modifier la séance"
+                        onClick={() => openEditor({ type: "session", sessionId: session.id })}
+                      >
+                        <Pencil />
+                      </Button>
+                      <Button
+                        size="icon-sm"
+                        variant="ghost"
+                        aria-label="Faire le bilan de la séance"
+                        onClick={() =>
+                          openEditor({ type: "log", taskId: task.id, sessionId: session.id })
+                        }
+                      >
+                        <Check />
+                      </Button>
+                    </>
+                  )}
+                  {session.status === "planned" && new Date(session.endAt) <= now && (
                     <Button
-                      size="icon-sm"
+                      size="sm"
                       variant="ghost"
-                      aria-label="Modifier la séance"
-                      onClick={() => openEditor({ type: "session", sessionId: session.id })}
-                    >
-                      <Pencil />
-                    </Button>
-                    <Button
-                      size="icon-sm"
-                      variant="ghost"
-                      aria-label="Faire le bilan de la séance"
                       onClick={() =>
                         openEditor({ type: "log", taskId: task.id, sessionId: session.id })
                       }
                     >
-                      <Check />
+                      Faire le bilan
                     </Button>
-                    <ConfirmAction
-                      label="Annuler cette séance ?"
-                      description="La part prévue redeviendra disponible à planifier."
-                      onConfirm={() =>
-                        action.run(
-                          () =>
-                            api.sessions.cancel({
-                              id: session.id,
-                              revision: session.revision,
-                            }),
-                          "Séance annulée",
-                        )
+                  )}
+                  {session.status === "expired" && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() =>
+                        openEditor({ type: "log", taskId: task.id, sessionId: session.id })
                       }
                     >
-                      <Button size="icon-sm" variant="ghost" aria-label="Annuler la séance">
-                        <Trash2 />
-                      </Button>
-                    </ConfirmAction>
-                  </div>
-                )}
-                {session.status === "planned" && new Date(session.endAt) <= now && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() =>
-                      openEditor({ type: "log", taskId: task.id, sessionId: session.id })
-                    }
-                  >
-                    Faire le bilan
-                  </Button>
-                )}
-                {session.status === "expired" && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() =>
-                      openEditor({ type: "log", taskId: task.id, sessionId: session.id })
-                    }
-                  >
-                    Renseigner si effectuée
-                  </Button>
-                )}
+                      Renseigner si effectuée
+                    </Button>
+                  )}
+                  <DeleteSessionAlert session={session}>
+                    <Button size="icon-sm" variant="ghost" aria-label="Supprimer la séance">
+                      <Trash2 />
+                    </Button>
+                  </DeleteSessionAlert>
+                </div>
               </div>
             ))}
           </div>

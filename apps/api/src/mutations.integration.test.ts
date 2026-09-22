@@ -1,12 +1,13 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { fileURLToPath } from "node:url";
 import { db, pool } from "./db";
-import { user } from "./db/schema";
+import { studySessions, user } from "./db/schema";
 import { getSnapshot } from "./data";
 import {
   cancelSession,
+  deleteSession,
   deleteEvent,
   deleteTag,
   deleteTask,
@@ -147,7 +148,7 @@ describe("PostgreSQL : propriété, contraintes et transactions", () => {
     await saveLog(alice, {
       ...logInput(current),
       id: latest.log.id,
-      actualMinutes: 100,
+      actualMinutes: 80,
       progressAfter: 30,
     });
     expect(
@@ -257,6 +258,70 @@ describe("PostgreSQL : propriété, contraintes et transactions", () => {
       allowOverlap: true,
     });
     expect(extra.plannedPercent).toBe(0);
+  });
+  it("supprime une séance sans bilan et contrôle le propriétaire et la révision", async () => {
+    const task = await saveTask(alice, taskInput("Séance à supprimer"));
+    const session = await saveSession(alice, {
+      taskId: task.id,
+      startAt: future(5),
+      endAt: future(5, 11),
+      allowOverlap: true,
+    });
+
+    await expect(deleteSession(bob, session.id, session.revision)).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+    await expect(deleteSession(alice, session.id, session.revision + 1)).rejects.toMatchObject(
+      { code: "CONFLICT" },
+    );
+
+    await deleteSession(alice, session.id, session.revision);
+
+    expect((await getSnapshot(alice)).sessions.some((item) => item.id === session.id)).toBe(
+      false,
+    );
+    expect(
+      await db.select().from(studySessions).where(eq(studySessions.id, session.id)),
+    ).toHaveLength(0);
+  });
+  it("archive une séance avec bilan et conserve l’historique corrigeable", async () => {
+    const task = await saveTask(alice, taskInput("Séance à archiver"));
+    const session = await saveSession(alice, {
+      taskId: task.id,
+      startAt: future(-2),
+      endAt: future(-2, 11),
+      allowOverlap: true,
+    });
+    const saved = await saveLog(alice, {
+      ...logInput(task),
+      sessionId: session.id,
+    });
+    let snapshot = await getSnapshot(alice);
+    const currentSession = snapshot.sessions.find((item) => item.id === session.id)!;
+
+    await deleteSession(alice, currentSession.id, currentSession.revision);
+
+    snapshot = await getSnapshot(alice);
+    expect(snapshot.sessions.some((item) => item.id === session.id)).toBe(false);
+    expect(snapshot.logs.find((item) => item.id === saved.log.id)?.sessionId).toBe(session.id);
+    expect(snapshot.tasks.find((item) => item.id === task.id)?.progress).toBe(25);
+    const [archived] = await db
+      .select()
+      .from(studySessions)
+      .where(eq(studySessions.id, session.id));
+    expect(archived.archivedAt).not.toBeNull();
+
+    const currentTask = snapshot.tasks.find((item) => item.id === task.id)!;
+    await saveLog(alice, {
+      ...logInput(currentTask),
+      id: saved.log.id,
+      sessionId: session.id,
+      actualMinutes: 120,
+      progressAfter: 35,
+    });
+    expect(
+      (await getSnapshot(alice)).tasks.find((item) => item.id === task.id)?.progress,
+    ).toBe(35);
   });
   it("garde une séance terminée depuis deux heures prévue et réserve sa part", async () => {
     const task = await saveTask(alice, taskInput("Séance en grâce"));

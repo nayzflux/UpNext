@@ -1,9 +1,15 @@
 "use client";
 
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactElement } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
-import { Clock3, Plus } from "lucide-react";
-import { getTaskMetrics, minutesBetween, zonedInstant, type Task } from "@upnext/contracts";
+import { Clock3, ListTodo, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  getTaskMetrics,
+  minutesBetween,
+  zonedInstant,
+  type Session,
+  type Task,
+} from "@upnext/contracts";
 import {
   pixelsPerMinute,
   snapMinute,
@@ -15,6 +21,14 @@ import { duration, errorMessage, formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuGroup,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 import { TaskTags } from "./common";
 import { useWorkspace } from "./workspace-context";
 
@@ -89,6 +103,50 @@ export function BacklogTask({
   );
 }
 
+export function SessionContextMenu({
+  session,
+  children,
+  onDelete,
+}: {
+  session: Session;
+  children: ReactElement;
+  onDelete: (session: Session) => void;
+}) {
+  const { openEditor, now } = useWorkspace();
+  const editable = session.status === "planned" && new Date(session.endAt) > now;
+
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger render={children} />
+      <ContextMenuContent>
+        <ContextMenuGroup>
+          {editable && (
+            <ContextMenuItem
+              onClick={() => openEditor({ type: "session", sessionId: session.id })}
+            >
+              <Pencil />
+              Modifier la séance
+            </ContextMenuItem>
+          )}
+          <ContextMenuItem
+            onClick={() => openEditor({ type: "detail", taskId: session.taskId })}
+          >
+            <ListTodo />
+            Ouvrir la tâche
+          </ContextMenuItem>
+        </ContextMenuGroup>
+        <ContextMenuSeparator />
+        <ContextMenuGroup>
+          <ContextMenuItem variant="destructive" onClick={() => onDelete(session)}>
+            <Trash2 />
+            Supprimer la séance
+          </ContextMenuItem>
+        </ContextMenuGroup>
+      </ContextMenuContent>
+    </ContextMenu>
+  );
+}
+
 function blockStyle(block: CalendarBlock, firstMinute: number): CSSProperties {
   return {
     top: (block.start - firstMinute) * pixelsPerMinute,
@@ -133,10 +191,12 @@ function SessionBlock({
   block,
   firstMinute,
   movingSessionId,
+  onDeleteSession,
 }: {
   block: CalendarBlock;
   firstMinute: number;
   movingSessionId?: string;
+  onDeleteSession: (session: Session) => void;
 }) {
   const { openEditor, timeZone, now } = useWorkspace();
   const session = block.session!;
@@ -161,62 +221,64 @@ function SessionBlock({
     disabled: !editable,
   });
   return (
-    <div
-      ref={setNodeRef}
-      data-testid="session-card"
-      data-session-id={session.id}
-      data-resizing={block.resizing || undefined}
-      data-duration={durationMinutes}
-      className={cn(
-        "calendar-block work-block",
-        durationMinutes < 30 && "is-short-block",
-        durationMinutes >= 30 && durationMinutes < 45 && "is-compact-block",
-        movingSessionId === session.id && "drag-origin",
-        block.resizing && "resizing-block",
-        session.status !== "planned" && "past-block",
-      )}
-      style={blockStyle(block, firstMinute)}
-    >
-      <Button
-        type="button"
-        variant="ghost"
-        className="calendar-block-main"
-        {...listeners}
-        {...attributes}
-        title={`${block.title} (${startTime}–${endTime} · ${durationText})`}
-        aria-label={
-          editable
-            ? `${block.title}, ${startTime}. Déplacer ou ouvrir la séance.`
-            : session.status === "planned" || session.status === "expired"
-              ? `${block.title}, ${startTime}. Faire le bilan de la séance.`
-              : `${block.title}, ${startTime}. Ouvrir la tâche.`
-        }
-        onClick={() =>
-          openEditor(
-            editable
-              ? { type: "session", sessionId: session.id }
-              : session.status === "planned" || session.status === "expired"
-                ? { type: "log", taskId: session.taskId, sessionId: session.id }
-                : { type: "detail", taskId: session.taskId },
-          )
-        }
+    <SessionContextMenu session={session} onDelete={onDeleteSession}>
+      <div
+        ref={setNodeRef}
+        data-testid="session-card"
+        data-session-id={session.id}
+        data-resizing={block.resizing || undefined}
+        data-duration={durationMinutes}
+        className={cn(
+          "calendar-block work-block",
+          durationMinutes < 30 && "is-short-block",
+          durationMinutes >= 30 && durationMinutes < 45 && "is-compact-block",
+          movingSessionId === session.id && "drag-origin",
+          block.resizing && "resizing-block",
+          session.status !== "planned" && "past-block",
+        )}
+        style={blockStyle(block, firstMinute)}
       >
-        <BlockText block={block} />
-      </Button>
-      {editable && (
         <Button
           type="button"
           variant="ghost"
-          ref={setResizeRef}
-          {...resizeListeners}
-          {...resizeAttributes}
-          className="resize-handle"
-          aria-label={`Redimensionner ${block.title}`}
+          className="calendar-block-main"
+          {...listeners}
+          {...attributes}
+          title={`${block.title} (${startTime}–${endTime} · ${durationText})`}
+          aria-label={
+            editable
+              ? `${block.title}, ${startTime}. Déplacer ou ouvrir la séance.`
+              : session.status === "planned" || session.status === "expired"
+                ? `${block.title}, ${startTime}. Faire le bilan de la séance.`
+                : `${block.title}, ${startTime}. Ouvrir la tâche.`
+          }
+          onClick={() =>
+            openEditor(
+              editable
+                ? { type: "session", sessionId: session.id }
+                : session.status === "planned" || session.status === "expired"
+                  ? { type: "log", taskId: session.taskId, sessionId: session.id }
+                  : { type: "detail", taskId: session.taskId },
+            )
+          }
         >
-          <span />
+          <BlockText block={block} />
         </Button>
-      )}
-    </div>
+        {editable && (
+          <Button
+            type="button"
+            variant="ghost"
+            ref={setResizeRef}
+            {...resizeListeners}
+            {...resizeAttributes}
+            className="resize-handle"
+            aria-label={`Redimensionner ${block.title}`}
+          >
+            <span />
+          </Button>
+        )}
+      </div>
+    </SessionContextMenu>
   );
 }
 
@@ -227,6 +289,7 @@ export function DayColumn({
   lastMinute,
   movingSessionId,
   originBlocks,
+  onDeleteSession,
 }: {
   date: string;
   blocks: CalendarBlock[];
@@ -234,6 +297,7 @@ export function DayColumn({
   lastMinute: number;
   movingSessionId?: string;
   originBlocks: CalendarBlock[];
+  onDeleteSession: (session: Session) => void;
 }) {
   const { timeZone, openEditor } = useWorkspace();
   const { setNodeRef } = useDroppable({ id: date, data: { date } });
@@ -297,6 +361,7 @@ export function DayColumn({
               block={block}
               firstMinute={firstMinute}
               movingSessionId={movingSessionId}
+              onDeleteSession={onDeleteSession}
             />
           );
         const startTime = formatDate(block.startAt, timeZone, "HH:mm");

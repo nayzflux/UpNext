@@ -269,6 +269,37 @@ export async function cancelSession(userId: string, id: string, revision: number
   });
 }
 
+export async function deleteSession(userId: string, id: string, revision: number) {
+  return mutate(userId, async (connection) => {
+    const [existing] = await connection
+      .select()
+      .from(studySessions)
+      .where(and(eq(studySessions.id, id), eq(studySessions.userId, userId)));
+    if (!existing || existing.archivedAt) throw notFound();
+    if (existing.revision !== revision) throw revisionConflict();
+
+    const [linkedLog] = await connection
+      .select({ id: workLogs.id })
+      .from(workLogs)
+      .where(and(eq(workLogs.sessionId, id), eq(workLogs.userId, userId)))
+      .limit(1);
+
+    if (linkedLog) {
+      await connection
+        .update(studySessions)
+        .set({
+          archivedAt: new Date().toISOString(),
+          revision: revision + 1,
+        })
+        .where(eq(studySessions.id, id));
+    } else {
+      await connection.delete(studySessions).where(eq(studySessions.id, id));
+    }
+
+    return { success: true as const };
+  });
+}
+
 export async function saveLog(userId: string, input: z.infer<typeof logInputSchema>) {
   return mutate(userId, async (connection) => {
     const task = await ownedTask(connection, userId, input.taskId);

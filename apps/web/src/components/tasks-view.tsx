@@ -25,8 +25,7 @@ import {
 } from "lucide-react";
 import { getTaskMetrics, type Task } from "@upnext/contracts";
 import { useWorkspace } from "./workspace-context";
-import { duration, formatDate, formatTimeUntil, priorityLabels } from "@/lib/format";
-import { Badge } from "@/components/ui/badge";
+import { duration, formatDate, formatTimeUntil } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
@@ -40,6 +39,7 @@ import {
 } from "@/components/ui/table";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { EmptyTasks, PageHeading, PlanningBadge, TaskTags } from "./common";
+import { PriorityBadge } from "./priority-badge";
 import { SelectControl } from "./select-control";
 
 const features = tableFeatures({
@@ -58,7 +58,6 @@ export function TasksView() {
   const tag = searchParams.get("tag") ?? "all";
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("active");
-  const [planning, setPlanning] = useState("all");
   const [priority, setPriority] = useState("all");
   const [deadline, setDeadline] = useState("all");
   const data = useMemo(
@@ -72,7 +71,7 @@ export function TasksView() {
           return false;
         if (tag === "none" && task.tagIds.length > 0) return false;
         if (tag !== "all" && tag !== "none" && !task.tagIds.includes(tag)) return false;
-        if (status === "active" && planning !== "done" && task.progress === 100) return false;
+        if (status === "active" && task.progress === 100) return false;
         if (status === "not-started" && task.progress !== 0) return false;
         if (status === "in-progress" && (task.progress === 0 || task.progress === 100))
           return false;
@@ -89,13 +88,18 @@ export function TasksView() {
           new Date(task.dueAt).getTime() > currentNow.getTime() + 7 * 86400000
         )
           return false;
-        return (
-          planning === "all" ||
-          getTaskMetrics(task, snapshot.sessions, snapshot.logs, currentNow).planning ===
-            planning
-        );
+        if (status === "unplanned") {
+          const planning = getTaskMetrics(
+            task,
+            snapshot.sessions,
+            snapshot.logs,
+            currentNow,
+          ).planning;
+          return planning === "none" || planning === "partial";
+        }
+        return true;
       }),
-    [snapshot, search, tag, status, priority, deadline, planning],
+    [snapshot, search, tag, status, priority, deadline],
   );
 
   const columns = useMemo<ColumnDef<typeof features, Task>[]>(
@@ -150,11 +154,7 @@ export function TasksView() {
         sortFn: (a, b) =>
           ({ low: 0, normal: 1, high: 2 })[a.original.priority] -
           { low: 0, normal: 1, high: 2 }[b.original.priority],
-        cell: ({ row }) => (
-          <Badge variant={row.original.priority === "high" ? "outline" : "secondary"}>
-            {priorityLabels[row.original.priority]}
-          </Badge>
-        ),
+        cell: ({ row }) => <PriorityBadge priority={row.original.priority} />,
       },
       {
         accessorKey: "progress",
@@ -249,11 +249,12 @@ export function TasksView() {
           onValueChange={(values) => {
             if (values[0]) setStatus(values[0]);
           }}
-          aria-label="Filtrer par avancement"
+          aria-label="Filtrer les tâches"
         >
           <ToggleGroupItem value="active">À faire</ToggleGroupItem>
           <ToggleGroupItem value="not-started">Non commencées</ToggleGroupItem>
           <ToggleGroupItem value="in-progress">En cours</ToggleGroupItem>
+          <ToggleGroupItem value="unplanned">Non planifiées</ToggleGroupItem>
           <ToggleGroupItem value="done">Terminées</ToggleGroupItem>
           <ToggleGroupItem value="all">Toutes</ToggleGroupItem>
         </ToggleGroup>
@@ -305,18 +306,6 @@ export function TasksView() {
           ]}
           value={deadline}
           onValueChange={setDeadline}
-        />
-        <SelectControl
-          label="Filtrer par planification"
-          options={[
-            { value: "all", label: "Tout le planning" },
-            { value: "none", label: "Non planifiées" },
-            { value: "partial", label: "Partiellement planifiées" },
-            { value: "full", label: "Planifiées" },
-            { value: "done", label: "Fait" },
-          ]}
-          value={planning}
-          onValueChange={setPlanning}
         />
       </div>
       <div className="surface overflow-hidden">
