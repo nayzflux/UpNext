@@ -7,6 +7,9 @@ import {
   normalizeTagName,
   overlaps,
   percentageToMinutes,
+  plannedSessionPercent,
+  sessionGraceEndsAt,
+  sessionIsWithinGrace,
   suggestedEstimate,
   suggestSlots,
   zonedInstant,
@@ -147,7 +150,7 @@ describe("tâches, tags et avancement", () => {
     });
   });
   it("une réservation passée sans bilan ne couvre plus le travail", () => {
-    const past = session("2026-03-22T15:00:00Z", "2026-03-22T19:00:00Z");
+    const past = session("2026-03-21T15:00:00Z", "2026-03-21T19:00:00Z");
     expect(getTaskMetrics(task, [past], [], now)).toMatchObject({
       plannedMinutes: 0,
       plannedPercent: 0,
@@ -155,6 +158,31 @@ describe("tâches, tags et avancement", () => {
       planning: "none",
     });
     expect(past.status).toBe("planned");
+  });
+  it("réserve la part jusqu'à 24 heures exactement après la fin", () => {
+    const reserved = session("2026-03-22T16:00:00Z", "2026-03-22T17:00:00Z");
+    const end = new Date(reserved.endAt).getTime();
+    const graceEnd = sessionGraceEndsAt(reserved.endAt);
+    expect(graceEnd).toBe(end + 24 * 60 * 60 * 1000);
+    for (const instant of [end - 1, end + 1, graceEnd - 1]) {
+      const at = new Date(instant);
+      expect(sessionIsWithinGrace(reserved.endAt, at)).toBe(true);
+      expect(plannedSessionPercent(task.id, [reserved], at)).toBe(reserved.plannedPercent);
+      expect(getTaskMetrics(task, [reserved], [], at)).toMatchObject({
+        plannedMinutes: 60,
+        unplannedMinutes: 120,
+        planning: "partial",
+      });
+    }
+    const atExpiry = new Date(graceEnd);
+    expect(sessionIsWithinGrace(reserved.endAt, atExpiry)).toBe(false);
+    expect(plannedSessionPercent(task.id, [reserved], atExpiry)).toBe(0);
+    expect(getTaskMetrics(task, [reserved], [], atExpiry)).toMatchObject({
+      plannedMinutes: 0,
+      plannedPercent: 0,
+      unplannedMinutes: 180,
+      planning: "none",
+    });
   });
   it("ne produit jamais de durée négative en cas de sur-réservation", () => {
     expect(
@@ -178,7 +206,7 @@ describe("tâches, tags et avancement", () => {
     ).toMatchObject({ plannedMinutes: 30, plannedPercent: 10, unplannedMinutes: 39 });
   });
   it("ne crédite pas la durée prévue d’une séance passée, mais l’avancement réel du bilan", () => {
-    const past = session("2026-03-22T10:00:00Z", "2026-03-22T10:30:00Z");
+    const past = session("2026-03-21T10:00:00Z", "2026-03-21T10:30:00Z");
     const shortTask = { ...task, estimatedMinutes: 60, progress: 25 };
 
     expect(getTaskMetrics(shortTask, [past], [log(past.startAt, 45)], now)).toMatchObject({

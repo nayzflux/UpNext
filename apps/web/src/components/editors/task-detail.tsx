@@ -128,7 +128,7 @@ export function TaskDetail({ task }: { task: Task }) {
                             : "Annulée"}
                   </p>
                 </div>
-                {session.status === "planned" && (
+                {session.status === "planned" && new Date(session.endAt) > now && (
                   <div className="flex gap-1">
                     <Button
                       size="icon-sm"
@@ -167,6 +167,17 @@ export function TaskDetail({ task }: { task: Task }) {
                       </Button>
                     </ConfirmAction>
                   </div>
+                )}
+                {session.status === "planned" && new Date(session.endAt) <= now && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() =>
+                      openEditor({ type: "log", taskId: task.id, sessionId: session.id })
+                    }
+                  >
+                    Faire le bilan
+                  </Button>
                 )}
                 {session.status === "expired" && (
                   <Button

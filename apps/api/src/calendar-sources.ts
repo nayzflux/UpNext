@@ -1,6 +1,7 @@
 import { lookup } from "node:dns/promises";
+import type { LookupAddress } from "node:dns";
 import { request } from "node:https";
-import { BlockList, isIP } from "node:net";
+import { BlockList, isIP, type LookupFunction } from "node:net";
 import { and, eq, isNull, lt, or } from "drizzle-orm";
 import { ORPCError } from "@orpc/server";
 import {
@@ -60,6 +61,13 @@ async function resolvePublicAddress(hostname: string) {
   return addresses[0];
 }
 
+export function pinnedLookup(address: LookupAddress): LookupFunction {
+  return (_hostname, options, callback) => {
+    if (options.all) callback(null, [address]);
+    else callback(null, address.address, address.family);
+  };
+}
+
 export async function downloadCalendar(urlText: string, etag?: string | null, modified?: string | null, redirects = 0): Promise<DownloadResult> {
   const url = new URL(normalizeSourceUrl(urlText));
   if (redirects > 3) throw new Error("Trop de redirections ICS.");
@@ -70,10 +78,11 @@ export async function downloadCalendar(urlText: string, etag?: string | null, mo
       timeout: 10000,
       headers: {
         Accept: "text/calendar, text/plain;q=0.8",
+        "User-Agent": "UpNext/1.0",
         ...(etag ? { "If-None-Match": etag } : {}),
         ...(modified ? { "If-Modified-Since": modified } : {}),
       },
-      lookup: (_hostname, _options, callback) => callback(null, address.address, address.family),
+      lookup: pinnedLookup(address),
     }, async (response) => {
       try {
         const status = response.statusCode ?? 0;

@@ -109,9 +109,14 @@ function BlockText({ block }: { block: CalendarBlock }) {
     <>
       <strong>{block.title}</strong>
       {block.event && "sourceId" in block.event && durationMinutes >= 30 && (
-        <span>{block.event.sourceName}{block.event.allDay ? " · Journée entière" : ""}</span>
+        <span>
+          {block.event.sourceName}
+          {block.event.allDay ? " · Journée entière" : ""}
+        </span>
       )}
-      {block.event && "sourceId" in block.event && block.event.allDay ? null : durationMinutes >= 45 ? (
+      {block.event &&
+      "sourceId" in block.event &&
+      block.event.allDay ? null : durationMinutes >= 45 ? (
         <span>
           {startTime}–{endTime} · {durationText}
         </span>
@@ -133,8 +138,9 @@ function SessionBlock({
   firstMinute: number;
   movingSessionId?: string;
 }) {
-  const { openEditor, timeZone } = useWorkspace();
+  const { openEditor, timeZone, now } = useWorkspace();
   const session = block.session!;
+  const editable = session.status === "planned" && new Date(session.endAt) > now;
   const durationMinutes = block.end - block.start;
   const startTime = formatDate(session.startAt, timeZone, "HH:mm");
   const endTime = formatDate(session.endAt, timeZone, "HH:mm");
@@ -143,7 +149,7 @@ function SessionBlock({
   const { setNodeRef, listeners, attributes } = useDraggable({
     id: `session:${block.id}`,
     data: { kind: "session", session } satisfies CalendarDrag,
-    disabled: session.status !== "planned",
+    disabled: !editable,
   });
   const {
     setNodeRef: setResizeRef,
@@ -152,7 +158,7 @@ function SessionBlock({
   } = useDraggable({
     id: `resize:${block.id}`,
     data: { kind: "resize", session } satisfies CalendarDrag,
-    disabled: session.status !== "planned",
+    disabled: !editable,
   });
   return (
     <div
@@ -178,18 +184,26 @@ function SessionBlock({
         {...listeners}
         {...attributes}
         title={`${block.title} (${startTime}–${endTime} · ${durationText})`}
-        aria-label={`${block.title}, ${startTime}. Déplacer ou ouvrir la séance.`}
+        aria-label={
+          editable
+            ? `${block.title}, ${startTime}. Déplacer ou ouvrir la séance.`
+            : session.status === "planned" || session.status === "expired"
+              ? `${block.title}, ${startTime}. Faire le bilan de la séance.`
+              : `${block.title}, ${startTime}. Ouvrir la tâche.`
+        }
         onClick={() =>
           openEditor(
-            session.status === "planned"
+            editable
               ? { type: "session", sessionId: session.id }
-              : { type: "detail", taskId: session.taskId },
+              : session.status === "planned" || session.status === "expired"
+                ? { type: "log", taskId: session.taskId, sessionId: session.id }
+                : { type: "detail", taskId: session.taskId },
           )
         }
       >
         <BlockText block={block} />
       </Button>
-      {session.status === "planned" && (
+      {editable && (
         <Button
           type="button"
           variant="ghost"

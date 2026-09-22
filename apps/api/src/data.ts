@@ -3,6 +3,7 @@ import {
   eventSchema,
   preferencesSchema,
   sessionSchema,
+  sessionIsWithinGrace,
   snapshotSchema,
   taskSchema,
   workLogSchema,
@@ -34,7 +35,7 @@ export function sessionToWire(row: typeof studySessions.$inferSelect) {
   return sessionSchema.parse({
     ...row,
     status:
-      row.status === "planned" && new Date(row.endAt) <= new Date() ? "expired" : row.status,
+      row.status === "planned" && !sessionIsWithinGrace(row.endAt) ? "expired" : row.status,
     startAt: new Date(row.startAt).toISOString(),
     endAt: new Date(row.endAt).toISOString(),
   });
@@ -73,14 +74,17 @@ export async function getSnapshot(
     .where(eq(studySessions.userId, userId));
   const logRows = await connection.select().from(workLogs).where(eq(workLogs.userId, userId));
   const eventRows = await connection.select().from(events).where(eq(events.userId, userId));
-  const sourceRows = await connection.select({
-    id: calendarSources.id,
-    name: calendarSources.name,
-    url: calendarSources.url,
-    attemptedAt: calendarSources.attemptedAt,
-    succeededAt: calendarSources.succeededAt,
-    error: calendarSources.error,
-  }).from(calendarSources).where(eq(calendarSources.userId, userId));
+  const sourceRows = await connection
+    .select({
+      id: calendarSources.id,
+      name: calendarSources.name,
+      url: calendarSources.url,
+      attemptedAt: calendarSources.attemptedAt,
+      succeededAt: calendarSources.succeededAt,
+      error: calendarSources.error,
+    })
+    .from(calendarSources)
+    .where(eq(calendarSources.userId, userId));
   const preferenceRows = await connection
     .select()
     .from(preferences)
@@ -97,7 +101,9 @@ export async function getSnapshot(
     sessions: sessionRows.map(sessionToWire),
     logs: logRows.map(logToWire).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     events: eventRows.map(eventToWire),
-    calendarSources: sourceRows.map(sourceToWire).sort((a, b) => a.name.localeCompare(b.name, "fr")),
+    calendarSources: sourceRows
+      .map(sourceToWire)
+      .sort((a, b) => a.name.localeCompare(b.name, "fr")),
     preferences: preferencesSchema.parse(preferenceRows[0] ?? {}),
     serverNow: new Date().toISOString(),
   });

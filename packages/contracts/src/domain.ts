@@ -17,6 +17,16 @@ export function minutesBetween(start: string, end: string) {
   return Math.max(0, (new Date(end).getTime() - new Date(start).getTime()) / 60000);
 }
 
+export const SESSION_GRACE_MS = 24 * 60 * 60 * 1000;
+
+export function sessionGraceEndsAt(endAt: string | Date) {
+  return new Date(endAt).getTime() + SESSION_GRACE_MS;
+}
+
+export function sessionIsWithinGrace(endAt: string | Date, now = new Date()) {
+  return sessionGraceEndsAt(endAt) > now.getTime();
+}
+
 export type PlanningStatus = "none" | "partial" | "full" | "done";
 
 export function plannedSessionPercent(
@@ -31,7 +41,7 @@ export function plannedSessionPercent(
         session.taskId === taskId &&
         session.id !== excludedSessionId &&
         session.status === "planned" &&
-        new Date(session.endAt) > now,
+        sessionIsWithinGrace(session.endAt, now),
     )
     .reduce((total, session) => total + session.plannedPercent, 0);
 }
@@ -52,7 +62,7 @@ export function getTaskMetrics(
       (session) =>
         session.taskId === task.id &&
         session.status === "planned" &&
-        new Date(session.endAt) > now,
+        sessionIsWithinGrace(session.endAt, now),
     )
     .reduce((total, session) => total + minutesBetween(session.startAt, session.endAt), 0);
   const plannedPercent = plannedSessionPercent(task.id, sessions, now);

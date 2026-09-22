@@ -44,7 +44,10 @@ export function TodayView() {
       new Date(session.startAt) < new Date(end) &&
       new Date(session.endAt) > new Date(start),
   );
-  const events = [...expandEvents(snapshot.events, start, end), ...(snapshot.calendarSources.length ? imported.data ?? [] : [])];
+  const events = [
+    ...expandEvents(snapshot.events, start, end),
+    ...(snapshot.calendarSources.length ? (imported.data ?? []) : []),
+  ];
   const timeline = [
     ...sessions.map((session) => ({
       id: session.id,
@@ -208,7 +211,15 @@ export function TodayView() {
                         className="h-auto justify-start whitespace-normal p-0 text-left"
                         onClick={() =>
                           "session" in item
-                            ? openEditor({ type: "detail", taskId: item.session.taskId })
+                            ? item.session.status === "expired" ||
+                              (item.session.status === "planned" &&
+                                new Date(item.session.endAt) <= now)
+                              ? openEditor({
+                                  type: "log",
+                                  taskId: item.session.taskId,
+                                  sessionId: item.session.id,
+                                })
+                              : openEditor({ type: "detail", taskId: item.session.taskId })
                             : "sourceId" in item.event
                               ? openEditor({ type: "importedEvent", event: item.event })
                               : openEditor({ type: "event", eventId: item.event.id })
@@ -216,7 +227,9 @@ export function TodayView() {
                       >
                         <span className="font-semibold">{item.title}</span>
                         {"event" in item && "sourceId" in item.event && (
-                          <span className="ml-2 text-xs text-muted-foreground">· {item.event.sourceName}</span>
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            · {item.event.sourceName}
+                          </span>
                         )}
                       </Button>
                       <div className="mt-2 flex items-center justify-between gap-2">

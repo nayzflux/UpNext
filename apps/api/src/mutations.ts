@@ -8,6 +8,8 @@ import {
   normalizeTagName,
   overlaps,
   plannedSessionPercent,
+  sessionIsWithinGrace,
+  SESSION_GRACE_MS,
   suggestedEstimate,
   type CalendarEvent,
   type Preferences,
@@ -205,7 +207,10 @@ export async function saveSession(userId: string, input: z.infer<typeof sessionI
           task.estimatedMinutes,
         ),
       );
-    if (new Date(input.endAt) > now && plannedPercent > availablePercent + 0.000001) {
+    if (
+      sessionIsWithinGrace(input.endAt, now) &&
+      plannedPercent > availablePercent + 0.000001
+    ) {
       throw new ORPCError("BAD_REQUEST", {
         message: "La part planifiée dépasse les 100 % de cette tâche.",
       });
@@ -215,7 +220,7 @@ export async function saveSession(userId: string, input: z.infer<typeof sessionI
         (session) => session.id !== input.id && session.status === "planned",
       ),
       ...expandEvents(snapshot.events, input.startAt, input.endAt),
-      ...await getImportedEvents(userId, input.startAt, input.endAt, connection),
+      ...(await getImportedEvents(userId, input.startAt, input.endAt, connection)),
     ];
     if (!input.allowOverlap && busy.some((slot) => overlaps(input, slot))) {
       throw new ORPCError("CONFLICT", {
@@ -361,7 +366,7 @@ export async function saveLog(userId: string, input: z.infer<typeof logInputSche
       .update(tasks)
       .set({ progress: progressAfter, revision: task.revision + 1 })
       .where(eq(tasks.id, task.id));
-    const now = new Date().toISOString();
+    const graceCutoff = new Date(Date.now() - SESSION_GRACE_MS).toISOString();
     if (progressAfter === 100) {
       await connection
         .update(studySessions)
@@ -374,7 +379,7 @@ export async function saveLog(userId: string, input: z.infer<typeof logInputSche
           and(
             eq(studySessions.taskId, task.id),
             eq(studySessions.status, "planned"),
-            gt(studySessions.endAt, now),
+            gt(studySessions.endAt, graceCutoff),
           ),
         );
     } else {
@@ -385,7 +390,7 @@ export async function saveLog(userId: string, input: z.infer<typeof logInputSche
           and(
             eq(studySessions.taskId, task.id),
             eq(studySessions.status, "planned"),
-            gt(studySessions.endAt, now),
+            gt(studySessions.endAt, graceCutoff),
           ),
         )
         .orderBy(studySessions.startAt, studySessions.id);
@@ -451,7 +456,7 @@ export async function saveEvent(userId: string, input: z.infer<typeof eventInput
     const busy = [
       ...snapshot.sessions.filter((session) => session.status === "planned"),
       ...expandEvents(otherEvents, input.startAt, horizon),
-      ...await getImportedEvents(userId, input.startAt, horizon, connection),
+      ...(await getImportedEvents(userId, input.startAt, horizon, connection)),
     ];
     if (
       !input.allowOverlap &&

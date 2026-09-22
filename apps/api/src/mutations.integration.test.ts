@@ -258,6 +258,91 @@ describe("PostgreSQL : propriété, contraintes et transactions", () => {
     });
     expect(extra.plannedPercent).toBe(0);
   });
+  it("garde une séance terminée depuis deux heures prévue et réserve sa part", async () => {
+    const task = await saveTask(alice, taskInput("Séance en grâce"));
+    const endAt = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+    const startAt = new Date(new Date(endAt).getTime() - 60 * 60 * 1000).toISOString();
+    const reserved = await saveSession(alice, {
+      taskId: task.id,
+      startAt,
+      endAt,
+      plannedPercent: 70,
+      allowOverlap: true,
+    });
+    let snapshot = await getSnapshot(alice);
+    expect(snapshot.sessions.find((item) => item.id === reserved.id)?.status).toBe("planned");
+    expect(getTaskMetrics(task, snapshot.sessions, snapshot.logs)).toMatchObject({
+      plannedPercent: 70,
+      unplannedMinutes: 72,
+    });
+    await expect(
+      saveSession(alice, {
+        taskId: task.id,
+        startAt: future(3),
+        endAt: future(3, 11),
+        plannedPercent: 31,
+        allowOverlap: true,
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    const next = await saveSession(alice, {
+      taskId: task.id,
+      startAt: future(4),
+      endAt: future(4, 11),
+      plannedPercent: 30,
+      allowOverlap: true,
+    });
+    await saveLog(alice, { ...logInput(task), progressAfter: 50 });
+    snapshot = await getSnapshot(alice);
+    expect(snapshot.sessions.find((item) => item.id === reserved.id)?.plannedPercent).toBe(50);
+    expect(snapshot.sessions.find((item) => item.id === next.id)?.plannedPercent).toBe(0);
+  });
+  it("permet de déclarer non faite une séance pendant sa grâce", async () => {
+    const task = await saveTask(alice, taskInput("Séance manquée en grâce"));
+    const endAt = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const reserved = await saveSession(alice, {
+      taskId: task.id,
+      startAt: new Date(new Date(endAt).getTime() - 60 * 60 * 1000).toISOString(),
+      endAt,
+      plannedPercent: 40,
+      allowOverlap: true,
+    });
+    await saveLog(alice, {
+      requestId: crypto.randomUUID(),
+      taskId: task.id,
+      taskRevision: task.revision,
+      sessionId: reserved.id,
+      missed: true,
+      note: "",
+    });
+    const snapshot = await getSnapshot(alice);
+    expect(snapshot.sessions.find((item) => item.id === reserved.id)?.status).toBe("missed");
+    expect(getTaskMetrics(task, snapshot.sessions, snapshot.logs).plannedPercent).toBe(0);
+  });
+  it("permet d'enregistrer un bilan effectué pendant la grâce", async () => {
+    const task = await saveTask(alice, taskInput("Séance effectuée en grâce"));
+    const endAt = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const reserved = await saveSession(alice, {
+      taskId: task.id,
+      startAt: new Date(new Date(endAt).getTime() - 60 * 60 * 1000).toISOString(),
+      endAt,
+      plannedPercent: 25,
+      allowOverlap: true,
+    });
+    const result = await saveLog(alice, {
+      requestId: crypto.randomUUID(),
+      taskId: task.id,
+      taskRevision: task.revision,
+      sessionId: reserved.id,
+      actualMinutes: 60,
+      progressAfter: 25,
+      note: "Révision terminée",
+      missed: false,
+    });
+    expect(result.log).toMatchObject({ actualMinutes: 60, progressAfter: 25 });
+    expect(
+      (await getSnapshot(alice)).sessions.find((item) => item.id === reserved.id)?.status,
+    ).toBe("completed");
+  });
   it("réduit les parts futures quand un bilan réel avance plus vite que prévu", async () => {
     const task = await saveTask(bob, taskInput());
     const first = await saveSession(bob, {

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { addCalendarDays, localDate } from "../../packages/contracts/src/domain";
+import { addCalendarDays, localDate, localTime } from "../../packages/contracts/src/domain";
 import { hourHeight } from "../../apps/web/src/lib/calendar-layout";
 import { signUp, openTaskForm, saveTask, addTag, setDateTime } from "./helpers";
 
@@ -72,7 +72,7 @@ test("inscription, tags, 50 %, déplacement, refus, bilan et réévaluation", as
   await expect(page.getByText(/Ce créneau chevauche/)).toBeVisible();
 
   await moved.click();
-  await setDateTime(page, "Début de la séance", `${addCalendarDays(today(), -1)}T10:00`);
+  await setDateTime(page, "Début de la séance", `${addCalendarDays(today(), -2)}T10:00`);
   await page.getByRole("button", { name: "Enregistrer", exact: true }).click();
   await expect(page.getByTestId("editor-modal")).toHaveCount(0);
   await page.goto("/taches");
@@ -108,6 +108,55 @@ test("inscription, tags, 50 %, déplacement, refus, bilan et réévaluation", as
   const html = await (await page.request.get("/taches")).text();
   expect(html).toContain("Préparer mon DS");
   expect(errors).toEqual([]);
+});
+
+test("une séance terminée reste prévue pendant la grâce et s'ouvre sur son bilan", async ({
+  page,
+}) => {
+  await signUp(page);
+  await openTaskForm(page, "Réviser pendant la grâce");
+  await saveTask(page);
+  await page.goto("/taches");
+  await page
+    .getByRole("button", { name: "Planifier Réviser pendant la grâce", exact: true })
+    .click();
+  const tomorrow = addCalendarDays(today(), 1);
+  await setDateTime(page, "Début de la séance", `${tomorrow}T10:00`);
+  await page.getByLabel("Durée, en minutes").fill("60");
+  await page.getByRole("button", { name: "Planifier la séance", exact: true }).click();
+
+  await page.goto(`/calendrier?date=${tomorrow}`);
+  await page.getByRole("button", { name: "Jour", exact: true }).click();
+  await page
+    .getByRole("button", {
+      name: "Réviser pendant la grâce, 10:00. Déplacer ou ouvrir la séance.",
+    })
+    .click();
+  const pastStart = new Date(Date.now() - 3 * 60 * 60 * 1000);
+  const pastDate = localDate(pastStart, "Europe/Paris");
+  const pastTime = localTime(pastStart, "Europe/Paris");
+  await setDateTime(page, "Début de la séance", `${pastDate}T${pastTime}`);
+  await page.getByRole("button", { name: "Enregistrer", exact: true }).click();
+
+  await page.goto("/taches");
+  await page.getByRole("button", { name: "Réviser pendant la grâce", exact: true }).click();
+  await expect(page.getByText("Prévue")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Modifier la séance" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Annuler la séance" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Faire le bilan" })).toBeVisible();
+
+  await page.goto(`/calendrier?date=${pastDate}`);
+  await page.getByRole("button", { name: "Jour", exact: true }).click();
+  await page
+    .getByRole("button", { name: /Réviser pendant la grâce.*Faire le bilan de la séance/ })
+    .click();
+  await expect(page.getByLabel("Je n’ai pas pu faire cette séance")).toBeVisible();
+  await page.getByLabel("Je n’ai pas pu faire cette séance").click();
+  await page.getByRole("button", { name: "Enregistrer le bilan" }).click();
+  await expect(page.getByTestId("editor-modal")).toHaveCount(0);
+  await page.goto("/taches");
+  await page.getByRole("button", { name: "Réviser pendant la grâce", exact: true }).click();
+  await expect(page.getByText("Manquée")).toBeVisible();
 });
 
 test("tâche sans tag, réutilisation, doublons, renommage et suppression", async ({ page }) => {

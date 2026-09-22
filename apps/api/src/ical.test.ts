@@ -70,5 +70,8 @@ describe("import ICS", () => {
 
   it("refuse un contenu qui n’est pas un calendrier", () => {
     expect(() => parseCalendar("Bonjour")).toThrow();
+    expect(() => parseCalendar("<br />\nWarning: PHP\nBEGIN:VCALENDAR\nEND:VCALENDAR"))
+      .toThrow("Le serveur du calendrier a renvoyé du HTML au lieu d’un flux ICS valide.");
+    expect(() => parseCalendar(source(event("UID:html-text\r\nSUMMARY:Note\r\nDESCRIPTION:<br />\r\nDTSTART:20261001T080000Z\r\nDTEND:20261001T090000Z\r\n")).content)).not.toThrow();
   });
 });

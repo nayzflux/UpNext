@@ -4,6 +4,9 @@ import { overlaps, zonedInstant, type ImportedEvent } from "@upnext/contracts";
 type SourceContent = { id: string; name: string; content: string | null };
 
 export function parseCalendar(content: string) {
+  if (/(?:^|\r?\n)\s*<(?:br\b|html\b|!doctype\s+html\b)/i.test(content)) {
+    throw new Error("Le serveur du calendrier a renvoyé du HTML au lieu d’un flux ICS valide.");
+  }
   const component = new ICAL.Component(ICAL.parse(content));
   if (component.name !== "vcalendar") throw new Error("Le flux ne contient pas de calendrier ICS.");
   for (const item of component.getAllSubcomponents("vevent")) {

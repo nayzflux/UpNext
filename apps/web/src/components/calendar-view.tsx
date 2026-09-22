@@ -123,7 +123,10 @@ export function CalendarView() {
     enabled: snapshot.calendarSources.length > 0,
   });
   const occurrences = useMemo(
-    () => [...expandEvents(snapshot.events, rangeStart, rangeEnd), ...(snapshot.calendarSources.length ? imported.data ?? [] : [])],
+    () => [
+      ...expandEvents(snapshot.events, rangeStart, rangeEnd),
+      ...(snapshot.calendarSources.length ? (imported.data ?? []) : []),
+    ],
     [snapshot.events, snapshot.calendarSources.length, imported.data, rangeStart, rangeEnd],
   );
   const activeSessions = snapshot.sessions.filter((session) => session.status !== "cancelled");
@@ -249,7 +252,8 @@ export function CalendarView() {
     }
     if (!isPointerDrag.current && data.kind === "session") {
       const dayWidth =
-        grid.current?.querySelector("[data-calendar-date]")?.getBoundingClientRect().width ?? 100;
+        grid.current?.querySelector("[data-calendar-date]")?.getBoundingClientRect().width ??
+        100;
       const dayIndex = dates.indexOf(localDate(data.session.startAt, timeZone));
       const dayDelta = Math.round(event.delta.x / dayWidth);
       const targetDate =
@@ -265,7 +269,9 @@ export function CalendarView() {
     const point =
       isPointerDrag.current && pointer.current
         ? pointer.current
-        : (translated ? { x: translated.left + translated.width / 2, y: translated.top } : null);
+        : translated
+          ? { x: translated.left + translated.width / 2, y: translated.top }
+          : null;
     if (!point) return null;
     const column = columns.find((element) => {
       const rect = element.getBoundingClientRect();
@@ -324,7 +330,8 @@ export function CalendarView() {
   }
 
   function rememberPointer(event: ReactPointerEvent) {
-    if (dragging && isPointerDrag.current) pointer.current = { x: event.clientX, y: event.clientY };
+    if (dragging && isPointerDrag.current)
+      pointer.current = { x: event.clientX, y: event.clientY };
   }
 
   function navigate(direction: number) {
@@ -361,7 +368,10 @@ export function CalendarView() {
                   queryClient.invalidateQueries({ queryKey: ["imported-events"] }),
                 ]);
                 if (sources.some((source) => source.error)) {
-                  toast.add({ title: "Certains calendriers n’ont pas pu être synchronisés", type: "error" });
+                  toast.add({
+                    title: "Certains calendriers n’ont pas pu être synchronisés",
+                    type: "error",
+                  });
                 } else {
                   toast.add({ title: "Calendriers synchronisés", type: "success" });
                 }
@@ -543,7 +553,15 @@ export function CalendarView() {
                           className={block.session ? "month-session" : "month-event"}
                           onClick={() =>
                             block.session
-                              ? openEditor({ type: "detail", taskId: block.session.taskId })
+                              ? block.session.status === "expired" ||
+                                (block.session.status === "planned" &&
+                                  new Date(block.session.endAt) <= now)
+                                ? openEditor({
+                                    type: "log",
+                                    taskId: block.session.taskId,
+                                    sessionId: block.session.id,
+                                  })
+                                : openEditor({ type: "detail", taskId: block.session.taskId })
                               : block.event && "sourceId" in block.event
                                 ? openEditor({ type: "importedEvent", event: block.event })
                                 : openEditor({ type: "event", eventId: block.event!.id })

@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { normalizeSourceUrl, publicAddress } from "./calendar-sources";
+import { describe, expect, it, vi } from "vitest";
+import { normalizeSourceUrl, pinnedLookup, publicAddress } from "./calendar-sources";
 
 describe("URLs des calendriers ICS", () => {
   it("accepte seulement des URL HTTPS publiques sans identifiants", () => {
@@ -21,5 +21,15 @@ describe("URLs des calendriers ICS", () => {
     }
     expect(publicAddress("8.8.8.8")).toBe(true);
     expect(publicAddress("2606:4700:4700::1111")).toBe(true);
+  });
+
+  it("renvoie l'adresse épinglée au format demandé par Node", () => {
+    const address = { address: "8.8.8.8", family: 4 };
+    const lookup = pinnedLookup(address);
+    const callback = vi.fn();
+    lookup("calendar.example.org", { all: true }, callback);
+    expect(callback).toHaveBeenLastCalledWith(null, [address]);
+    lookup("calendar.example.org", { all: false }, callback);
+    expect(callback).toHaveBeenLastCalledWith(null, address.address, address.family);
   });
 });
