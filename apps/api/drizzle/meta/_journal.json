@@ -15,6 +15,13 @@
       "when": 1790051060274,
       "tag": "0001_burly_warbird",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790069316624,
+      "tag": "0002_tense_giant_man",
+      "breakpoints": true
     }
   ]
 }

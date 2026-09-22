@@ -12,10 +12,11 @@ import { TaskEditor } from "./task-editor";
 import { SessionEditor } from "./session-editor";
 import { EstimateEditor, LogEditor } from "./log-editor";
 import { EventEditor } from "./event-editor";
+import { formatDate } from "@/lib/format";
 import { TaskDetail } from "./task-detail";
 
 export function EditorHost({ editor }: { editor: Editor }) {
-  const { snapshot, closeEditor } = useWorkspace();
+  const { snapshot, closeEditor, timeZone } = useWorkspace();
   const task =
     "taskId" in editor ? snapshot.tasks.find((task) => task.id === editor.taskId) : undefined;
   const session =
@@ -34,6 +35,7 @@ export function EditorHost({ editor }: { editor: Editor }) {
     session: session ? "Modifier la séance" : "Trouver une place",
     log: log ? "Corriger le dernier bilan" : "Comment ça s’est passé ?",
     event: event ? "Modifier l’événement" : "Bloquer un moment",
+    importedEvent: editor.type === "importedEvent" ? editor.event.title : "Événement importé",
     estimate: "Ajuster le temps prévu ?",
   };
   const descriptions = {
@@ -42,6 +44,7 @@ export function EditorHost({ editor }: { editor: Editor }) {
     session: "Réserve un moment pour avancer à ton rythme.",
     log: "Un bilan honnête pour mieux organiser la suite.",
     event: "Un cours, un rendez-vous, un moment déjà pris.",
+    importedEvent: "Événement synchronisé depuis un calendrier externe.",
     estimate: "Une estimation peut évoluer avec ton travail.",
   };
   let content: React.ReactNode;
@@ -60,6 +63,18 @@ export function EditorHost({ editor }: { editor: Editor }) {
     content = <LogEditor task={task} session={session} log={log} />;
   if (editor.type === "event")
     content = <EventEditor event={event} initialStart={editor.startAt} />;
+  if (editor.type === "importedEvent")
+    content = (
+      <div className="p-6 pt-2 text-sm">
+        <p className="font-semibold">{editor.event.sourceName}</p>
+        <p className="mt-2">
+          {editor.event.allDay
+            ? `Journée entière · du ${formatDate(editor.event.startAt, timeZone, "dd/MM/yyyy")} au ${formatDate(new Date(new Date(editor.event.endAt).getTime() - 1).toISOString(), timeZone, "dd/MM/yyyy")}`
+            : `Événement · ${formatDate(editor.event.startAt, timeZone, "dd/MM/yyyy HH:mm")} – ${formatDate(editor.event.endAt, timeZone, "dd/MM/yyyy HH:mm")}`}
+        </p>
+        <p className="mt-3 text-muted-foreground">Cet événement est en lecture seule. Modifie-le dans le calendrier d’origine.</p>
+      </div>
+    );
   if (editor.type === "estimate" && task)
     content = <EstimateEditor task={task} suggestedMinutes={editor.minutes} />;
 

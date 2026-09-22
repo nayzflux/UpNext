@@ -302,6 +302,20 @@ describe("suggestions déterministes", () => {
       ),
     ).toBe(true);
   });
+  it("exclut aussi les événements importés des suggestions", () => {
+    const blocked = {
+      id: "source:course:2026-03-24",
+      occurrenceId: "source:course:2026-03-24",
+      sourceId: crypto.randomUUID(),
+      sourceName: "Cours",
+      title: "Examen",
+      startAt: "2026-03-24T16:00:00Z",
+      endAt: "2026-03-24T17:00:00Z",
+      allDay: false,
+    };
+    const slots = suggestions({ importedEvents: [blocked] });
+    expect(slots.every((slot) => !overlaps(slot, blocked))).toBe(true);
+  });
   it("observe toute la durée réellement travaillée, y compris après minuit", () => {
     const slots = suggestions({
       logs: [

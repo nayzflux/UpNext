@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -19,8 +19,8 @@ import {
   Sun,
   X,
 } from "lucide-react";
-import { getTaskMetrics } from "@upnext/contracts";
-import { orpc } from "@/lib/api";
+import { getTaskMetrics, type Snapshot } from "@upnext/contracts";
+import { api, orpc } from "@/lib/api";
 import { authClient } from "@/lib/auth-client";
 import { duration, formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -52,6 +52,41 @@ export function Workspace({
   const [editor, setEditor] = useState<Editor | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const snapshot = query.data;
+  const syncInFlight = useRef(false);
+
+  useEffect(() => {
+    if (!snapshot?.calendarSources.length) return;
+    const syncDue = async () => {
+      if (syncInFlight.current || document.visibilityState === "hidden") return;
+      syncInFlight.current = true;
+      try {
+        const sources = await api.calendarSources.syncDue();
+        const current = queryClient.getQueryData<Snapshot>(orpc.dashboard.get.queryOptions().queryKey);
+        if (sources.some((source) => {
+          const previous = current?.calendarSources.find((item) => item.id === source.id);
+          return previous?.succeededAt !== source.succeededAt || previous?.error !== source.error;
+        })) {
+          await Promise.all([
+            queryClient.invalidateQueries({ queryKey: orpc.dashboard.get.queryOptions().queryKey }),
+            queryClient.invalidateQueries({ queryKey: ["imported-events"] }),
+          ]);
+        }
+      } catch {
+        // The source status remains available in Settings; dashboard loading stays usable.
+      } finally {
+        syncInFlight.current = false;
+      }
+    };
+    void syncDue();
+    const timer = window.setInterval(() => void syncDue(), 60000);
+    window.addEventListener("focus", syncDue);
+    document.addEventListener("visibilitychange", syncDue);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", syncDue);
+      document.removeEventListener("visibilitychange", syncDue);
+    };
+  }, [snapshot?.calendarSources.length, queryClient]);
 
   useEffect(() => {
     if (snapshot) setTheme(snapshot.preferences.theme);

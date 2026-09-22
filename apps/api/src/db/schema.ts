@@ -127,6 +127,29 @@ export const events = pgTable(
   ],
 );
 
+export const calendarSources = pgTable(
+  "calendar_sources",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    url: text("url").notNull(),
+    content: text("content"),
+    etag: text("etag"),
+    lastModified: text("last_modified"),
+    attemptedAt: timestamp("attempted_at", { withTimezone: true, mode: "string" }),
+    succeededAt: timestamp("succeeded_at", { withTimezone: true, mode: "string" }),
+    syncingUntil: timestamp("syncing_until", { withTimezone: true, mode: "string" }),
+    error: text("error"),
+  },
+  (table) => [
+    index("calendar_sources_user_idx").on(table.userId),
+    unique("calendar_sources_user_url_unique").on(table.userId, table.url),
+  ],
+);
+
 export const tasks = pgTable(
   "tasks",
   {

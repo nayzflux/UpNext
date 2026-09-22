@@ -3,6 +3,10 @@ import { z } from "zod";
 import {
   eventInputSchema,
   eventSchema,
+  calendarSourceSchema,
+  calendarSourceInputSchema,
+  importedEventSchema,
+  importedEventRangeSchema,
   idSchema,
   logInputSchema,
   preferencesSchema,
@@ -49,6 +53,16 @@ export const contract = {
   events: {
     save: oc.input(eventInputSchema).output(eventSchema),
     delete: oc.input(identified).output(deleted),
+  },
+  calendarSources: {
+    create: oc.input(calendarSourceInputSchema).output(calendarSourceSchema),
+    rename: oc.input(z.object({ id: idSchema, name: z.string().trim().min(1).max(100) })).output(calendarSourceSchema),
+    delete: oc.input(identified).output(deleted),
+    syncDue: oc.route({ method: "POST" }).output(z.array(calendarSourceSchema)),
+    sync: oc.route({ method: "POST" }).input(z.object({ id: idSchema.optional() })).output(z.array(calendarSourceSchema)),
+  },
+  importedEvents: {
+    list: oc.input(importedEventRangeSchema).output(z.array(importedEventSchema)),
   },
   preferences: { save: oc.input(preferencesSchema).output(preferencesSchema) },
   suggestions: {

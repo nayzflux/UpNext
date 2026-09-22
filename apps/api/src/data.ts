@@ -9,7 +9,9 @@ import {
   type Snapshot,
 } from "@upnext/contracts";
 import { db, type Connection } from "./db";
+import { sourceToWire } from "./calendar-sources";
 import {
+  calendarSources,
   events,
   preferences,
   studySessions,
@@ -71,6 +73,14 @@ export async function getSnapshot(
     .where(eq(studySessions.userId, userId));
   const logRows = await connection.select().from(workLogs).where(eq(workLogs.userId, userId));
   const eventRows = await connection.select().from(events).where(eq(events.userId, userId));
+  const sourceRows = await connection.select({
+    id: calendarSources.id,
+    name: calendarSources.name,
+    url: calendarSources.url,
+    attemptedAt: calendarSources.attemptedAt,
+    succeededAt: calendarSources.succeededAt,
+    error: calendarSources.error,
+  }).from(calendarSources).where(eq(calendarSources.userId, userId));
   const preferenceRows = await connection
     .select()
     .from(preferences)
@@ -87,6 +97,7 @@ export async function getSnapshot(
     sessions: sessionRows.map(sessionToWire),
     logs: logRows.map(logToWire).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     events: eventRows.map(eventToWire),
+    calendarSources: sourceRows.map(sourceToWire).sort((a, b) => a.name.localeCompare(b.name, "fr")),
     preferences: preferencesSchema.parse(preferenceRows[0] ?? {}),
     serverNow: new Date().toISOString(),
   });

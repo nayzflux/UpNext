@@ -22,8 +22,8 @@ import {
   type DragMoveEvent,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { CalendarPlus, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { CalendarPlus, ChevronLeft, ChevronRight, Plus, RefreshCw } from "lucide-react";
 import {
   addCalendarDays,
   expandEvents,
@@ -75,6 +75,7 @@ export function CalendarView() {
   const [dragging, setDragging] = useState<CalendarDrag | null>(null);
   const [preview, setPreview] = useState<CalendarPreview | null>(null);
   const [fullDay, setFullDay] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const grid = useRef<HTMLDivElement>(null);
   const pointer = useRef<{ x: number; y: number } | null>(null);
   const isPointerDrag = useRef(false);
@@ -116,9 +117,14 @@ export function CalendarView() {
   );
   const rangeStart = zonedInstant(firstDate, "00:00", timeZone);
   const rangeEnd = zonedInstant(addCalendarDays(firstDate, dayCount), "00:00", timeZone);
+  const imported = useQuery({
+    queryKey: ["imported-events", rangeStart, rangeEnd],
+    queryFn: () => api.importedEvents.list({ startAt: rangeStart, endAt: rangeEnd }),
+    enabled: snapshot.calendarSources.length > 0,
+  });
   const occurrences = useMemo(
-    () => expandEvents(snapshot.events, rangeStart, rangeEnd),
-    [snapshot.events, rangeStart, rangeEnd],
+    () => [...expandEvents(snapshot.events, rangeStart, rangeEnd), ...(snapshot.calendarSources.length ? imported.data ?? [] : [])],
+    [snapshot.events, snapshot.calendarSources.length, imported.data, rangeStart, rangeEnd],
   );
   const activeSessions = snapshot.sessions.filter((session) => session.status !== "cancelled");
   const backlog = snapshot.tasks
@@ -342,6 +348,34 @@ export function CalendarView() {
         title="Mon calendrier"
         description="Un planning souple, qui avance avec toi."
       >
+        {snapshot.calendarSources.length > 0 && (
+          <Button
+            variant="outline"
+            disabled={syncing}
+            onClick={async () => {
+              setSyncing(true);
+              try {
+                const sources = await api.calendarSources.sync({});
+                await Promise.all([
+                  queryClient.invalidateQueries({ queryKey: key }),
+                  queryClient.invalidateQueries({ queryKey: ["imported-events"] }),
+                ]);
+                if (sources.some((source) => source.error)) {
+                  toast.add({ title: "Certains calendriers n’ont pas pu être synchronisés", type: "error" });
+                } else {
+                  toast.add({ title: "Calendriers synchronisés", type: "success" });
+                }
+              } catch (error) {
+                toast.add({ title: errorMessage(error), type: "error" });
+              } finally {
+                setSyncing(false);
+              }
+            }}
+          >
+            <RefreshCw data-icon="inline-start" />
+            {syncing ? "Synchronisation…" : "Synchroniser"}
+          </Button>
+        )}
         <Button variant="outline" onClick={() => openEditor({ type: "event" })}>
           <CalendarPlus data-icon="inline-start" />
           Événement
@@ -354,6 +388,11 @@ export function CalendarView() {
           Séance
         </Button>
       </PageHeading>
+      {imported.isError && (
+        <p className="text-sm text-destructive" role="alert">
+          Impossible de charger les calendriers externes : {errorMessage(imported.error)}
+        </p>
+      )}
       <DndContext
         id={dndContextId}
         sensors={sensors}
@@ -505,7 +544,9 @@ export function CalendarView() {
                           onClick={() =>
                             block.session
                               ? openEditor({ type: "detail", taskId: block.session.taskId })
-                              : openEditor({ type: "event", eventId: block.event!.id })
+                              : block.event && "sourceId" in block.event
+                                ? openEditor({ type: "importedEvent", event: block.event })
+                                : openEditor({ type: "event", eventId: block.event!.id })
                           }
                         >
                           {block.title}

@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { Laptop, Moon, Plus, Sun, TagIcon, Trash2 } from "lucide-react";
-import { preferencesSchema, type Preferences, type Tag } from "@upnext/contracts";
+import { CalendarDays, Laptop, Moon, Plus, Sun, TagIcon, Trash2 } from "lucide-react";
+import { preferencesSchema, type CalendarSource, type Preferences, type Tag } from "@upnext/contracts";
 import { api } from "@/lib/api";
 import { useAction, useWorkspace } from "./workspace-context";
 import { Button } from "@/components/ui/button";
@@ -74,6 +75,100 @@ function TagSettingsRow({ tag }: { tag: Tag }) {
         </Button>
       </ConfirmAction>
     </form>
+  );
+}
+
+function CalendarSourceRow({ source }: { source: CalendarSource }) {
+  const [name, setName] = useState(source.name);
+  const action = useAction();
+  const queryClient = useQueryClient();
+  return (
+    <div className="rounded-lg border p-4">
+      <form
+        className="flex flex-wrap items-center gap-2"
+        onSubmit={async (event) => {
+          event.preventDefault();
+          const renamed = await action.run(() => api.calendarSources.rename({ id: source.id, name }), "Calendrier renommé");
+          if (renamed) await queryClient.invalidateQueries({ queryKey: ["imported-events"] });
+        }}
+      >
+        <CalendarDays className="size-4 text-muted-foreground" />
+        <Input
+          aria-label={`Nom du calendrier ${source.name}`}
+          className="min-w-40 flex-1"
+          required
+          maxLength={100}
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+        />
+        <Button size="sm" type="submit" variant="outline" disabled={action.pending || name.trim() === source.name}>Renommer</Button>
+        <ConfirmAction
+          label={`Supprimer le calendrier « ${source.name} » ?`}
+          description="Ses événements importés seront retirés du planning."
+          onConfirm={async () => {
+            const deleted = await action.run(() => api.calendarSources.delete({ id: source.id }), "Calendrier supprimé");
+            if (deleted) await queryClient.invalidateQueries({ queryKey: ["imported-events"] });
+            return deleted;
+          }}
+        >
+          <Button type="button" size="icon-sm" variant="ghost" aria-label={`Supprimer le calendrier ${source.name}`}><Trash2 /></Button>
+        </ConfirmAction>
+      </form>
+      <p className="mt-2 break-all text-xs text-muted-foreground">{new URL(source.url).hostname}</p>
+      <p className="mt-1 text-xs text-muted-foreground">
+        {source.succeededAt
+          ? `Dernière synchronisation : ${new Date(source.succeededAt).toLocaleString("fr-FR")}`
+          : "Aucune synchronisation réussie"}
+      </p>
+      {source.error && <p className="mt-1 text-sm text-destructive" role="status">Erreur : {source.error}</p>}
+    </div>
+  );
+}
+
+function CalendarSourceSettings() {
+  const { snapshot } = useWorkspace();
+  const action = useAction();
+  const queryClient = useQueryClient();
+  const [name, setName] = useState("");
+  const [url, setUrl] = useState("");
+  return (
+    <section className="settings-section">
+      <div>
+        <h2>Calendriers externes</h2>
+        <p>Ajoute plusieurs liens ICS. Leurs événements occupent le planning et sont synchronisés pendant ton utilisation.</p>
+      </div>
+      <div className="flex flex-col gap-4">
+        {snapshot.calendarSources.length ? snapshot.calendarSources.map((source) => (
+          <CalendarSourceRow key={source.id} source={source} />
+        )) : <p className="text-sm text-muted-foreground">Aucun calendrier externe ajouté.</p>}
+        <form
+          className="flex flex-col gap-3"
+          onSubmit={async (event) => {
+            event.preventDefault();
+            const created = await action.run(() => api.calendarSources.create({ name, url }), "Calendrier ajouté");
+            if (created) {
+              setName("");
+              setUrl("");
+              await queryClient.invalidateQueries({ queryKey: ["imported-events"] });
+            }
+          }}
+        >
+          <Field>
+            <FieldLabel htmlFor="calendar-source-name">Nom du calendrier</FieldLabel>
+            <Input id="calendar-source-name" required maxLength={100} value={name} onChange={(event) => setName(event.target.value)} placeholder="Cours, agenda personnel…" />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="calendar-source-url">Lien ICS HTTPS</FieldLabel>
+            <Input id="calendar-source-url" type="url" required value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://exemple.fr/calendrier.ics" />
+          </Field>
+          <FormError message={action.error} />
+          <Button className="w-fit" type="submit" disabled={action.pending}>
+            <Plus data-icon="inline-start" />
+            {action.pending ? "Ajout…" : "Ajouter un calendrier"}
+          </Button>
+        </form>
+      </div>
+    </section>
   );
 }
 
@@ -268,6 +363,7 @@ export function SettingsView() {
         </div>
       </section>
       <PreferencesForm />
+      <CalendarSourceSettings />
       <section className="settings-section">
         <div>
           <h2>Mes tags</h2>

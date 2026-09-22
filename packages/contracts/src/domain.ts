@@ -1,6 +1,7 @@
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 import type {
   CalendarEvent,
+  ImportedEvent,
   Preferences,
   Session,
   Suggestion,
@@ -207,6 +208,7 @@ export function suggestSlots(input: {
   preferences: Preferences;
   sessions: Session[];
   events: CalendarEvent[];
+  importedEvents?: ImportedEvent[];
   logs: WorkLog[];
   now?: Date;
 }): Suggestion[] {
@@ -248,6 +250,7 @@ export function suggestSlots(input: {
   const busy = [
     ...sessions.filter((session) => session.status === "planned"),
     ...expandEvents(events, now.toISOString(), horizon.toISOString()),
+    ...(input.importedEvents ?? []),
   ];
   const candidates: (Suggestion & { score: number })[] = [];
   let date = localDate(now, preferences.timeZone);

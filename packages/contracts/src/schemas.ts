@@ -114,6 +114,33 @@ export const eventSchema = eventFieldsSchema.extend({
   id: idSchema,
   revision: z.number().int(),
 });
+
+export const calendarSourceSchema = z.object({
+  id: idSchema,
+  name: z.string(),
+  url: z.url(),
+  attemptedAt: instantSchema.nullable(),
+  succeededAt: instantSchema.nullable(),
+  error: z.string().nullable(),
+});
+export const calendarSourceInputSchema = z.object({
+  name: z.string().trim().min(1).max(100),
+  url: z.url(),
+});
+export const importedEventSchema = z.object({
+  id: z.string(),
+  occurrenceId: z.string(),
+  sourceId: idSchema,
+  sourceName: z.string(),
+  title: z.string(),
+  startAt: instantSchema,
+  endAt: instantSchema,
+  allDay: z.boolean(),
+});
+export const importedEventRangeSchema = z.object({
+  startAt: instantSchema,
+  endAt: instantSchema,
+});
 export const eventInputSchema = eventFieldsSchema
   .extend({
     id: idSchema.optional(),
@@ -149,6 +176,7 @@ export const snapshotSchema = z.object({
   sessions: z.array(sessionSchema),
   logs: z.array(workLogSchema),
   events: z.array(eventSchema),
+  calendarSources: z.array(calendarSourceSchema),
   preferences: preferencesSchema,
   serverNow: instantSchema,
 });
@@ -165,6 +193,8 @@ export type Tag = z.infer<typeof tagSchema>;
 export type Session = z.infer<typeof sessionSchema>;
 export type WorkLog = z.infer<typeof workLogSchema>;
 export type CalendarEvent = z.infer<typeof eventSchema>;
+export type CalendarSource = z.infer<typeof calendarSourceSchema>;
+export type ImportedEvent = z.infer<typeof importedEventSchema>;
 export type Preferences = z.infer<typeof preferencesSchema>;
 export type Snapshot = z.infer<typeof snapshotSchema>;
 export type Suggestion = z.infer<typeof suggestionSchema>;

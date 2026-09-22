@@ -5,6 +5,7 @@ import {
   minutesBetween,
   zonedInstant,
   type EventOccurrence,
+  type ImportedEvent,
   type Session,
   type Task,
 } from "@upnext/contracts";
@@ -35,7 +36,7 @@ export type CalendarBlock = {
   lane: number;
   lanes: number;
   session?: Session;
-  event?: EventOccurrence;
+  event?: EventOccurrence | ImportedEvent;
   preview?: boolean;
   resizing?: boolean;
 };
@@ -116,7 +117,7 @@ export function dayBlocks(
   timeZone: string,
   tasks: Task[],
   sessions: Session[],
-  events: EventOccurrence[],
+  events: (EventOccurrence | ImportedEvent)[],
   preview: CalendarPreview | null = null,
 ) {
   const startAt = zonedInstant(date, "00:00", timeZone);

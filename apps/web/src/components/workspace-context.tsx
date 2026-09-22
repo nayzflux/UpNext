@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState } from "react";
+import type { ImportedEvent } from "@upnext/contracts";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Snapshot } from "@upnext/contracts";
 import { orpc } from "@/lib/api";
@@ -19,6 +20,7 @@ export type Editor =
     }
   | { type: "log"; taskId: string; sessionId?: string; logId?: string }
   | { type: "event"; eventId?: string; startAt?: string }
+  | { type: "importedEvent"; event: ImportedEvent }
   | { type: "estimate"; taskId: string; minutes: number };
 
 export const WorkspaceContext = createContext<{

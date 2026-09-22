@@ -51,7 +51,13 @@ Appliquer les migrations avant le démarrage. Pour utiliser un SMTP externe, ren
 - **Aujourd’hui** rassemble les séances, les échéances, les retards, les bilans en attente et la charge à placer.
 - **Mes tâches** permet la recherche, le tri et les filtres par tag, priorité, échéance, avancement et couverture du planning. « Sans tag » est seulement un filtre.
 - **Calendrier** propose les vues jour, semaine et mois. Sur mobile, la vue jour remplace la semaine. Cliquer dans la grille ou sur le bouton de planification ouvre le formulaire. Les séances peuvent être déplacées et redimensionnées ; le formulaire permet les mêmes opérations au clavier, avec une précision à la minute.
-- **Paramètres** gère les disponibilités, le fuseau IANA, le thème et les tags.
+- **Paramètres** gère les disponibilités, le fuseau IANA, le thème, les tags et les calendriers ICS externes.
+
+### Calendriers externes
+
+Dans **Paramètres → Calendriers externes**, ajouter une ou plusieurs URL d’abonnement ICS en HTTPS. Les événements sont affichés en lecture seule dans **Calendrier** et **Aujourd’hui**, avec le nom de leur source. Ils comptent comme créneaux occupés pour les séances et les suggestions. Les tâches ne peuvent être liées qu’aux événements créés dans UpNext.
+
+Pendant l’utilisation de l’application, chaque source est vérifiée au plus une fois par heure. Le bouton **Synchroniser** du calendrier force une vérification immédiate de toutes les sources. La date de la dernière réussite et les erreurs éventuelles sont visibles dans les paramètres. Si une vérification échoue, les événements issus de la dernière version valide restent visibles. Supprimer une source retire immédiatement ses événements.
 
 Les formulaires s’ouvrent dans un modal centré. Le calendrier affiche toute sa hauteur dans la page, sans défilement interne. La plage affichée s’adapte aux séances et événements, avec un bouton pour déplier les 24 heures. Les cartes se placent par pas de quinze minutes : l’aperçu occupe exactement la durée choisie et la largeur disponible au point de dépôt. La poignée de redimensionnement ajuste directement la carte, sans la remplacer. Échap annule le déplacement ; les flèches du clavier déplacent d’un quart d’heure ou d’un jour.
 
@@ -120,4 +126,4 @@ Les versions résolues sont verrouillées dans `bun.lock`. Après une modificati
 
 ## Périmètre V1
 
-Planification manuelle, comptes privés, tags libres, événements ponctuels/hebdomadaires, bilans et suggestions. Les tâches récurrentes, le partage, les agendas externes, les notifications push, le chronomètre et la replanification automatique sont exclus. Le dashboard charge les données du compte en une réponse pour garder cette première version simple ; une pagination serveur pourra être ajoutée si le volume le justifie.
+Planification manuelle, comptes privés, tags libres, événements ponctuels/hebdomadaires, abonnements ICS en lecture seule, bilans et suggestions. Les tâches récurrentes, le partage, les notifications push, le chronomètre et la replanification automatique sont exclus. Le dashboard charge les données principales du compte en une réponse ; les occurrences ICS sont chargées pour la période consultée.

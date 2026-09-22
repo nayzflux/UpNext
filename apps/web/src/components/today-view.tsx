@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, CalendarPlus, Check, ChevronRight, Leaf, Plus, Sun } from "lucide-react";
 import {
   addCalendarDays,
@@ -12,6 +13,7 @@ import {
   zonedInstant,
 } from "@upnext/contracts";
 import { useWorkspace } from "./workspace-context";
+import { api } from "@/lib/api";
 import { duration, formatDate } from "@/lib/format";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +31,11 @@ export function TodayView() {
   const today = localDate(now, timeZone);
   const start = zonedInstant(today, "00:00", timeZone);
   const end = zonedInstant(addCalendarDays(today, 1), "00:00", timeZone);
+  const imported = useQuery({
+    queryKey: ["imported-events", start, end],
+    queryFn: () => api.importedEvents.list({ startAt: start, endAt: end }),
+    enabled: snapshot.calendarSources.length > 0,
+  });
   const active = snapshot.tasks.filter((task) => task.progress < 100);
   const urgent = [...active].sort((a, b) => a.dueAt.localeCompare(b.dueAt));
   const sessions = snapshot.sessions.filter(
@@ -37,7 +44,7 @@ export function TodayView() {
       new Date(session.startAt) < new Date(end) &&
       new Date(session.endAt) > new Date(start),
   );
-  const events = expandEvents(snapshot.events, start, end);
+  const events = [...expandEvents(snapshot.events, start, end), ...(snapshot.calendarSources.length ? imported.data ?? [] : [])];
   const timeline = [
     ...sessions.map((session) => ({
       id: session.id,
@@ -82,6 +89,11 @@ export function TodayView() {
           Nouvelle tâche
         </Button>
       </PageHeading>
+      {imported.isError && (
+        <p className="text-sm text-destructive" role="alert">
+          Impossible de charger les calendriers externes.
+        </p>
+      )}
       <section className="day-intro">
         <div className="day-intro-copy">
           <span className="eyebrow">À TON RYTHME</span>
@@ -178,8 +190,12 @@ export function TodayView() {
                 {timeline.map((item) => (
                   <div className="timeline-item" key={item.id}>
                     <div className="timeline-time">
-                      {formatDate(item.startAt, timeZone, "HH:mm")}
-                      <span>{formatDate(item.endAt, timeZone, "HH:mm")}</span>
+                      {"event" in item && "sourceId" in item.event && item.event.allDay
+                        ? "Toute la journée"
+                        : formatDate(item.startAt, timeZone, "HH:mm")}
+                      {!("event" in item && "sourceId" in item.event && item.event.allDay) && (
+                        <span>{formatDate(item.endAt, timeZone, "HH:mm")}</span>
+                      )}
                     </div>
                     <div
                       className={
@@ -193,14 +209,21 @@ export function TodayView() {
                         onClick={() =>
                           "session" in item
                             ? openEditor({ type: "detail", taskId: item.session.taskId })
-                            : openEditor({ type: "event", eventId: item.event.id })
+                            : "sourceId" in item.event
+                              ? openEditor({ type: "importedEvent", event: item.event })
+                              : openEditor({ type: "event", eventId: item.event.id })
                         }
                       >
                         <span className="font-semibold">{item.title}</span>
+                        {"event" in item && "sourceId" in item.event && (
+                          <span className="ml-2 text-xs text-muted-foreground">· {item.event.sourceName}</span>
+                        )}
                       </Button>
                       <div className="mt-2 flex items-center justify-between gap-2">
                         <span className="text-xs text-muted-foreground">
-                          {duration(minutesBetween(item.startAt, item.endAt))}
+                          {"event" in item && "sourceId" in item.event && item.event.allDay
+                            ? "Journée entière"
+                            : duration(minutesBetween(item.startAt, item.endAt))}
                         </span>
                         {"session" in item &&
                           (item.session.status === "planned" ? (
