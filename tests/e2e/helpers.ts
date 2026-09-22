@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { addCalendarDays, localDate } from "../../packages/contracts/src/domain";
 const password = "Local-test-UpNext-2026!";
 
 export async function signUp(page: Page) {
@@ -72,6 +73,17 @@ export async function addTag(page: Page, name: string, create = true) {
 }
 
 export async function saveTask(page: Page) {
+  const estimate = page.getByLabel("Temps estimé, en minutes");
+  if ((await estimate.inputValue()) === "") {
+    await estimate.fill("60");
+  }
+  const dueDate = page.locator("#task-date");
+  if ((await dueDate.innerText()).includes("Choisir une date")) {
+    const date = addCalendarDays(localDate(new Date(), "Europe/Paris"), 7);
+    const calendarDay = new Intl.DateTimeFormat("fr-FR").format(new Date(`${date}T12:00:00`));
+    await dueDate.click();
+    await page.locator(`[data-day="${calendarDay}"]`).click();
+  }
   await page.getByRole("button", { name: "Créer la tâche", exact: true }).click();
   await expect(page.getByTestId("editor-modal")).toHaveCount(0);
 }

@@ -57,11 +57,13 @@ export function DatePicker({
   onChange,
   id,
   label,
+  allowClear = true,
 }: {
   value: string;
   onChange: (date: string) => void;
   id: string;
   label?: string;
+  allowClear?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -93,6 +95,22 @@ export function DatePicker({
             }
           }}
         />
+        {allowClear && value && (
+          <div className="border-t p-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="w-full"
+              onClick={() => {
+                onChange("");
+                setOpen(false);
+              }}
+            >
+              Effacer la date
+            </Button>
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   );
@@ -103,7 +121,7 @@ export function TimePicker({
   onChange,
   id,
   label,
-  allowClear = false,
+  allowClear = true,
 }: {
   value: string;
   onChange: (time: string) => void;
@@ -230,13 +248,19 @@ export function DateTimeField({
           id={id}
           label={label}
           value={value.split("T")[0] ?? ""}
-          onChange={(date) => onChange(`${date}T${value.split("T")[1] ?? "09:00"}`)}
+          onChange={(date) => {
+            const time = value.split("T")[1] ?? "";
+            onChange(date ? (time ? `${date}T${time}` : date) : "");
+          }}
         />
         <TimePicker
           id={`${id}-time`}
           label={`Heure de ${label.toLocaleLowerCase("fr")}`}
           value={value.split("T")[1] ?? ""}
-          onChange={(time) => onChange(`${value.split("T")[0]}T${time}`)}
+          onChange={(time) => {
+            const date = value.split("T")[0] ?? "";
+            onChange(time ? `${date}T${time}` : date);
+          }}
         />
       </div>
     </Field>

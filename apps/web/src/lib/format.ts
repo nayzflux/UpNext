@@ -1,3 +1,4 @@
+import { formatDistanceStrict } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 import { fr } from "date-fns/locale";
 import { localDate, localTime, zonedInstant, type PlanningStatus } from "@upnext/contracts";
@@ -11,6 +12,14 @@ export function duration(minutes: number) {
 
 export function formatDate(date: string | Date, timeZone: string, pattern = "d MMM") {
   return formatInTimeZone(date, timeZone, pattern, { locale: fr });
+}
+
+export function formatTimeUntil(date: string | Date, now: string | Date) {
+  return formatDistanceStrict(date, now, {
+    addSuffix: true,
+    locale: fr,
+    roundingMethod: "ceil",
+  });
 }
 
 export function dateTimeInput(instant: string, timeZone: string) {

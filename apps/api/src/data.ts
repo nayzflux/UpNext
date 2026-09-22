@@ -31,6 +31,8 @@ export function taskToWire(row: typeof tasks.$inferSelect, tagIds: string[]) {
 export function sessionToWire(row: typeof studySessions.$inferSelect) {
   return sessionSchema.parse({
     ...row,
+    status:
+      row.status === "planned" && new Date(row.endAt) <= new Date() ? "expired" : row.status,
     startAt: new Date(row.startAt).toISOString(),
     endAt: new Date(row.endAt).toISOString(),
   });

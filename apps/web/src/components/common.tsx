@@ -4,7 +4,7 @@ import { useState } from "react";
 import { CalendarClock, Check, Clock3, Plus } from "lucide-react";
 import { getTaskMetrics, type Task } from "@upnext/contracts";
 import { useWorkspace } from "./workspace-context";
-import { duration, formatDate } from "@/lib/format";
+import { duration, formatDate, formatTimeUntil } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -97,7 +97,7 @@ export function TaskRow({
           className={overdue ? "text-xs text-destructive" : "text-xs text-muted-foreground"}
         >
           {overdue ? "En retard · " : "Pour le "}
-          {formatDate(task.dueAt, timeZone)}
+          {formatDate(task.dueAt, timeZone)} · {formatTimeUntil(task.dueAt, now)}
         </span>
       </Button>
       <div className="hidden sm:block">
@@ -200,4 +200,3 @@ export function ConfirmAction({
 }
 
 export { PlanningBadge } from "./planning-badge";
-

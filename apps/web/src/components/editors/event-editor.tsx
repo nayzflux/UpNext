@@ -20,17 +20,22 @@ export function EventEditor({
   event?: CalendarEvent;
   initialStart?: string;
 }) {
-  const { timeZone: accountZone, now, closeEditor } = useWorkspace();
+  const { timeZone: accountZone, closeEditor } = useWorkspace();
   const timeZone = event?.timeZone ?? accountZone;
-  const defaultStart =
-    initialStart ?? new Date(Math.ceil(now.getTime() / 900000) * 900000).toISOString();
+  const defaultStart = initialStart ?? "";
   const [title, setTitle] = useState(event?.title ?? "");
-  const [start, setStart] = useState(dateTimeInput(event?.startAt ?? defaultStart, timeZone));
+  const [start, setStart] = useState(
+    event?.startAt || defaultStart
+      ? dateTimeInput(event?.startAt ?? defaultStart, timeZone)
+      : "",
+  );
   const [end, setEnd] = useState(
-    dateTimeInput(
-      event?.endAt ?? new Date(new Date(defaultStart).getTime() + 3600000).toISOString(),
-      timeZone,
-    ),
+    event?.endAt || defaultStart
+      ? dateTimeInput(
+          event?.endAt ?? new Date(new Date(defaultStart).getTime() + 3600000).toISOString(),
+          timeZone,
+        )
+      : "",
   );
   const [weekly, setWeekly] = useState(event?.weekly ?? false);
   const [repeatUntil, setRepeatUntil] = useState(event?.repeatUntil ?? "");
@@ -42,6 +47,9 @@ export function EventEditor({
     formEvent.preventDefault();
     setValidationError("");
     try {
+      if (!start.includes("T") || !end.includes("T")) {
+        throw new Error("Indique le début et la fin de l’événement.");
+      }
       const saved = await action.run(
         () =>
           api.events.save({

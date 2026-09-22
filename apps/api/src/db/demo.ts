@@ -84,7 +84,6 @@ async function seed() {
     taskId: created[0].id,
     taskRevision: 0,
     sessionId: past.id,
-    actualStartAt: at(-1, "17:00"),
     actualMinutes: 90,
     progressAfter: 25,
     note: "Les exercices prennent un peu plus de temps que prévu.",

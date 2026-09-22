@@ -42,7 +42,7 @@ export const sessionSchema = z.object({
   startAt: instantSchema,
   endAt: instantSchema,
   plannedPercent: z.number().min(0).max(100),
-  status: z.enum(["planned", "completed", "missed", "cancelled"]),
+  status: z.enum(["planned", "completed", "missed", "expired", "cancelled"]),
   cancellationReason: z.enum(["manual", "task-completed"]).nullable(),
   revision: z.number().int(),
 });
@@ -86,15 +86,19 @@ export const logInputSchema = z
     taskId: idSchema,
     taskRevision: z.number().int(),
     sessionId: idSchema.nullable().default(null),
-    actualStartAt: instantSchema,
-    actualMinutes: z.number().int().min(0).max(1440),
-    progressAfter: z.number().min(0).max(100),
+    actualMinutes: z.number().int().min(0).max(1440).optional(),
+    progressAfter: z.number().min(0).max(100).optional(),
     note: z.string().max(2000).default(""),
     missed: z.boolean().default(false),
   })
   .refine(
-    (value) => !value.missed || (value.actualMinutes === 0 && value.sessionId !== null),
-    "Une séance manquée doit être liée au planning et durer zéro minute.",
+    (value) => !value.missed || value.sessionId !== null,
+    "Une séance manquée doit être liée au planning.",
+  )
+  .refine(
+    (value) =>
+      value.missed || (value.actualMinutes !== undefined && value.progressAfter !== undefined),
+    "Indique le temps passé et l’avancement de la tâche.",
   );
 
 export const eventFieldsSchema = z.object({

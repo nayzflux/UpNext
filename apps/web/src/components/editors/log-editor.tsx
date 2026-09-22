@@ -1,9 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { minutesBetween, type Session, type Task, type WorkLog } from "@upnext/contracts";
+import {
+  defaultSessionPercent,
+  minutesBetween,
+  type Session,
+  type Task,
+  type WorkLog,
+} from "@upnext/contracts";
 import { api } from "@/lib/api";
-import { dateTimeInput, duration, errorMessage, inputToInstant } from "@/lib/format";
+import { duration, errorMessage } from "@/lib/format";
 import { useAction, useWorkspace } from "../workspace-context";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -11,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Spinner } from "@/components/ui/spinner";
-import { DateTimeField, FormError } from "./fields";
+import { FormError } from "./fields";
 
 export function LogEditor({
   task,
@@ -22,7 +28,7 @@ export function LogEditor({
   session?: Session;
   log?: WorkLog;
 }) {
-  const { timeZone, now, closeEditor, openEditor } = useWorkspace();
+  const { now, closeEditor, openEditor } = useWorkspace();
   const action = useAction();
   const [requestId] = useState(() => crypto.randomUUID());
   const defaultMinutes = session
@@ -31,15 +37,23 @@ export function LogEditor({
         Math.max(0, Math.floor((now.getTime() - new Date(session.startAt).getTime()) / 60000)),
       )
     : 30;
-  const defaultStart =
-    session && new Date(session.startAt) < now
-      ? session.startAt
-      : new Date(now.getTime() - defaultMinutes * 60000).toISOString();
-  const [start, setStart] = useState(
-    dateTimeInput(log?.actualStartAt ?? defaultStart, timeZone),
+  const defaultProgress = Math.min(
+    100,
+    Math.round(
+      (task.progress +
+        (session
+          ? session.plannedPercent *
+            (defaultMinutes / minutesBetween(session.startAt, session.endAt))
+          : defaultSessionPercent(defaultMinutes, task.estimatedMinutes))) *
+        10,
+    ) / 10,
   );
-  const [minutes, setMinutes] = useState(log?.actualMinutes ?? defaultMinutes);
-  const [progress, setProgress] = useState(log?.progressAfter ?? task.progress);
+  const [minutes, setMinutes] = useState(
+    log ? String(log.actualMinutes) : session ? String(defaultMinutes) : "",
+  );
+  const [progress, setProgress] = useState(
+    log ? String(log.progressAfter) : session ? String(defaultProgress) : "",
+  );
   const [note, setNote] = useState(log?.note ?? "");
   const [missed, setMissed] = useState(log?.missed ?? false);
   const [validationError, setValidationError] = useState("");
@@ -47,6 +61,10 @@ export function LogEditor({
   async function save(event: React.FormEvent) {
     event.preventDefault();
     setValidationError("");
+    if (!missed && (minutes === "" || progress === "")) {
+      setValidationError("Indique le temps passé et l’avancement de la tâche.");
+      return;
+    }
     try {
       const saved = await action.run(
         () =>
@@ -56,10 +74,9 @@ export function LogEditor({
             taskId: task.id,
             taskRevision: task.revision,
             sessionId: session?.id ?? log?.sessionId ?? null,
-            actualStartAt: inputToInstant(start, timeZone),
-            actualMinutes: missed ? 0 : minutes,
-            progressAfter: progress,
-            note,
+            actualMinutes: missed ? undefined : Number(minutes),
+            progressAfter: missed ? undefined : Number(progress),
+            note: missed ? "" : note,
             missed,
           }),
         missed ? "Séance marquée comme manquée" : "Ton avancement est enregistré",
@@ -85,7 +102,7 @@ export function LogEditor({
         </p>
       </div>
       <FieldGroup>
-        {session && (
+        {session && session.status !== "expired" && (
           <Field orientation="horizontal">
             <Checkbox
               id="log-missed"
@@ -95,7 +112,6 @@ export function LogEditor({
             <FieldLabel htmlFor="log-missed">Je n’ai pas pu faire cette séance</FieldLabel>
           </Field>
         )}
-        <DateTimeField id="log-start" label="Début réel" value={start} onChange={setStart} />
         {!missed && (
           <>
             <Field>
@@ -107,7 +123,8 @@ export function LogEditor({
                 max={1440}
                 required
                 value={minutes}
-                onChange={(event) => setMinutes(Number(event.target.value))}
+                placeholder={String(defaultMinutes)}
+                onChange={(event) => setMinutes(event.target.value)}
               />
             </Field>
             <Field>
@@ -119,31 +136,33 @@ export function LogEditor({
                 type="number"
                 min={0}
                 max={100}
-                step={1}
+                step="any"
                 required
                 value={progress}
-                onChange={(event) => setProgress(Number(event.target.value))}
+                placeholder={String(defaultProgress)}
+                onChange={(event) => setProgress(event.target.value)}
               />
               <FieldDescription>
                 Où en es-tu au total ? Avant ce bilan : {log?.progressBefore ?? task.progress}{" "}
-                %. Le temps passé et le travail terminé sont indépendants.
+                %. Les valeurs proposées suivent la séance prévue ; tu peux ajuster le temps et
+                le pourcentage séparément.
               </FieldDescription>
             </Field>
-            <Button type="button" variant="outline" onClick={() => setProgress(100)}>
+            <Button type="button" variant="outline" onClick={() => setProgress("100")}>
               La tâche est terminée · 100 %
             </Button>
+            <Field>
+              <FieldLabel htmlFor="log-note">Une note pour la prochaine fois</FieldLabel>
+              <Textarea
+                id="log-note"
+                rows={3}
+                placeholder="Ce qu’il reste à faire, ce qui a bloqué…"
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+              />
+            </Field>
           </>
         )}
-        <Field>
-          <FieldLabel htmlFor="log-note">Une note pour la prochaine fois</FieldLabel>
-          <Textarea
-            id="log-note"
-            rows={3}
-            placeholder="Ce qu’il reste à faire, ce qui a bloqué…"
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
-          />
-        </Field>
         <FormError message={validationError || action.error} />
       </FieldGroup>
       <div className="editor-footer">
@@ -166,13 +185,14 @@ export function EstimateEditor({
   suggestedMinutes: number;
 }) {
   const { closeEditor } = useWorkspace();
-  const [minutes, setMinutes] = useState(Math.min(100000, suggestedMinutes));
+  const [minutes, setMinutes] = useState(String(Math.min(100000, suggestedMinutes)));
   const action = useAction();
 
   async function save(event: React.FormEvent) {
     event.preventDefault();
+    if (!minutes) return;
     const result = await action.run(
-      () => api.tasks.update({ ...task, estimatedMinutes: minutes }),
+      () => api.tasks.update({ ...task, estimatedMinutes: Number(minutes) }),
       "Estimation ajustée",
     );
     if (result) closeEditor();
@@ -200,7 +220,8 @@ export function EstimateEditor({
             max={100000}
             required
             value={minutes}
-            onChange={(event) => setMinutes(Number(event.target.value))}
+            placeholder={String(suggestedMinutes)}
+            onChange={(event) => setMinutes(event.target.value)}
           />
           <FieldDescription>
             Les séances déjà placées conservent leurs horaires.

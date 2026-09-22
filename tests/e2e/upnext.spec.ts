@@ -23,8 +23,9 @@ test("inscription, tags, 50 %, déplacement, refus, bilan et réévaluation", as
   await page.getByRole("button", { name: "Planifier Préparer mon DS", exact: true }).click();
   const tomorrow = addCalendarDays(today(), 1);
   await setDateTime(page, "Début de la séance", `${tomorrow}T10:00`);
+  await expect(page.getByLabel("Durée, en minutes")).toHaveValue("");
+  await page.getByLabel("Durée, en minutes").fill("60");
   await page.getByLabel("Part de la tâche, en %").fill("50");
-  await expect(page.getByLabel("Durée, en minutes")).toHaveValue("60");
   await page.getByRole("button", { name: "Planifier la séance", exact: true }).click();
   await expect(page.getByTestId("editor-modal")).toHaveCount(0);
 
@@ -76,9 +77,22 @@ test("inscription, tags, 50 %, déplacement, refus, bilan et réévaluation", as
   await expect(page.getByTestId("editor-modal")).toHaveCount(0);
   await page.goto("/taches");
   await page.getByRole("button", { name: "Préparer mon DS", exact: true }).click();
-  await page.getByRole("button", { name: "Faire le bilan de la séance", exact: true }).click();
-  await page.getByLabel("Temps réellement passé, en minutes").fill("90");
-  await page.getByLabel("Avancement total de la tâche, en %").fill("25");
+  await expect(page.getByText("Expirée · non faite")).toBeVisible();
+  await page.getByRole("button", { name: "Renseigner si effectuée" }).click();
+  await expect(page.getByLabel("Début réel")).toHaveCount(0);
+  await expect(page.getByLabel("Temps réellement passé, en minutes")).toHaveValue("60");
+  await expect(page.getByLabel("Avancement total de la tâche, en %")).toHaveValue("50");
+  const actualMinutes = page.getByLabel("Temps réellement passé, en minutes");
+  await actualMinutes.press("Control+A");
+  await actualMinutes.press("Delete");
+  await expect(actualMinutes).toHaveValue("");
+  await actualMinutes.fill("90");
+  const progress = page.getByLabel("Avancement total de la tâche, en %");
+  await progress.press("Control+A");
+  await progress.press("Delete");
+  await expect(progress).toHaveValue("");
+  await progress.fill("25");
+  await page.getByLabel("Une note pour la prochaine fois").fill("Exercices 1 à 3 terminés");
   await page.getByRole("button", { name: "Enregistrer le bilan" }).click();
   await expect(page.getByRole("heading", { name: "Ajuster le temps prévu ?" })).toBeVisible();
   await expect(page.getByLabel("Nouvelle estimation totale, en minutes")).toHaveValue("360");

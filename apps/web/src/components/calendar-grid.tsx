@@ -22,8 +22,12 @@ import { useWorkspace } from "./workspace-context";
 export function BacklogTask({ task }: { task: Task }) {
   const { snapshot, now, openEditor } = useWorkspace();
   const metrics = getTaskMetrics(task, snapshot.sessions, snapshot.logs, now);
-  const [chosenMinutes, setChosenMinutes] = useState<number | null>(null);
-  const durationMinutes = snapMinute(chosenMinutes ?? metrics.unplannedMinutes, 15, 1440);
+  const [chosenMinutes, setChosenMinutes] = useState("");
+  const durationMinutes = snapMinute(
+    chosenMinutes === "" ? metrics.unplannedMinutes : Number(chosenMinutes),
+    15,
+    1440,
+  );
   const { setNodeRef, listeners, attributes, isDragging } = useDraggable({
     id: `task:${task.id}`,
     data: { kind: "task", task, durationMinutes } satisfies CalendarDrag,
@@ -66,9 +70,9 @@ export function BacklogTask({ task }: { task: Task }) {
           max={1440}
           step={15}
           className="h-8 w-20"
-          value={chosenMinutes ?? durationMinutes}
-          onChange={(event) => setChosenMinutes(Number(event.target.value))}
-          onBlur={() => setChosenMinutes(durationMinutes)}
+          value={chosenMinutes}
+          placeholder={String(durationMinutes)}
+          onChange={(event) => setChosenMinutes(event.target.value)}
         />
         <span className="text-xs text-muted-foreground">min</span>
         <Button

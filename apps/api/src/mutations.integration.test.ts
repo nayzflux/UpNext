@@ -34,7 +34,6 @@ const logInput = (task: Task) => ({
   taskId: task.id,
   taskRevision: task.revision,
   sessionId: null,
-  actualStartAt: future(-1),
   actualMinutes: 90,
   progressAfter: 25,
   note: "",
@@ -370,15 +369,21 @@ describe("PostgreSQL : propriété, contraintes et transactions", () => {
       endAt: future(-3, 11),
       allowOverlap: false,
     });
+    let snapshot = await getSnapshot(alice);
+    expect(snapshot.sessions.find((item) => item.id === session.id)?.status).toBe("expired");
+    expect(snapshot.logs.some((item) => item.sessionId === session.id)).toBe(false);
     const missed = await saveLog(alice, {
-      ...logInput(task),
+      requestId: crypto.randomUUID(),
+      taskId: task.id,
+      taskRevision: task.revision,
       sessionId: session.id,
-      actualStartAt: session.startAt,
-      actualMinutes: 0,
+      note: "",
       missed: true,
     });
     expect(missed.log.progressAfter).toBe(0);
-    let snapshot = await getSnapshot(alice);
+    expect(missed.log.actualMinutes).toBe(0);
+    expect(missed.log.note).toBe("");
+    snapshot = await getSnapshot(alice);
     expect(snapshot.sessions.find((item) => item.id === session.id)?.status).toBe("missed");
     let current = snapshot.tasks.find((item) => item.id === task.id)!;
     const actual = await saveLog(alice, logInput(current));
@@ -393,5 +398,33 @@ describe("PostgreSQL : propriété, contraintes et transactions", () => {
     await expect(
       saveLog(alice, { ...logInput(current), id: missed.log.id, sessionId: session.id }),
     ).rejects.toMatchObject({ code: "CONFLICT" });
+  });
+  it("permet de déclarer effectuée une séance expirée avec une note", async () => {
+    const task = await saveTask(alice, taskInput());
+    const session = await saveSession(alice, {
+      taskId: task.id,
+      startAt: future(-2),
+      endAt: future(-2, 11),
+      allowOverlap: false,
+    });
+    const result = await saveLog(alice, {
+      requestId: crypto.randomUUID(),
+      taskId: task.id,
+      taskRevision: task.revision,
+      sessionId: session.id,
+      actualMinutes: 75,
+      progressAfter: 20,
+      note: "Chapitre terminé",
+      missed: false,
+    });
+    expect(result.log).toMatchObject({
+      actualStartAt: session.startAt,
+      actualMinutes: 75,
+      progressAfter: 20,
+      note: "Chapitre terminé",
+    });
+    expect(
+      (await getSnapshot(alice)).sessions.find((item) => item.id === session.id)?.status,
+    ).toBe("completed");
   });
 });

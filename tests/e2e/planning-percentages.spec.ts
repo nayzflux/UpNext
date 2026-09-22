@@ -20,14 +20,15 @@ test("le reste à planifier suit les parts prévues, indépendamment des durées
   const durationInput = page.getByLabel("Durée, en minutes");
   const percentInput = page.getByLabel("Part de la tâche, en %");
   await durationInput.fill("30");
-  await expect(percentInput).toHaveValue("50");
+  await expect(percentInput).toHaveValue("");
+  await expect(percentInput).toHaveAttribute("placeholder", "50 % proposé");
   await setDateTime(page, "Début de la séance", `${date}T10:00`);
   await page.getByRole("button", { name: "Planifier la séance" }).click();
   await expect(backlog).toContainText("30 min à placer");
 
   await backlog.getByRole("button", { name: "Planifier Lecture courte" }).click();
   await durationInput.fill("60");
-  await expect(percentInput).toHaveValue("50");
+  await expect(percentInput).toHaveAttribute("placeholder", "50 % proposé");
   await percentInput.fill("10");
   await expect(durationInput).toHaveValue("60");
   await setDateTime(page, "Début de la séance", `${date}T12:00`);

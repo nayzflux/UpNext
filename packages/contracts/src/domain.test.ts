@@ -12,6 +12,7 @@ import {
   zonedInstant,
 } from "./domain";
 import {
+  logInputSchema,
   taskFieldsSchema,
   type CalendarEvent,
   type Preferences,
@@ -19,6 +20,35 @@ import {
   type Task,
   type WorkLog,
 } from "./schemas";
+
+describe("bilan simplifié", () => {
+  const base = {
+    requestId: crypto.randomUUID(),
+    taskId: crypto.randomUUID(),
+    taskRevision: 0,
+    sessionId: crypto.randomUUID(),
+  };
+
+  it("accepte une séance non faite sans durée, pourcentage ni début réel", () => {
+    expect(logInputSchema.parse({ ...base, missed: true })).toMatchObject({
+      missed: true,
+      note: "",
+    });
+  });
+
+  it("demande la durée et l’avancement pour une séance effectuée", () => {
+    expect(logInputSchema.safeParse({ ...base, missed: false }).success).toBe(false);
+    expect(
+      logInputSchema.safeParse({
+        ...base,
+        missed: false,
+        actualMinutes: 75,
+        progressAfter: 40,
+        note: "Lecture terminée",
+      }).success,
+    ).toBe(true);
+  });
+});
 
 const now = new Date("2026-03-23T08:00:00Z");
 const task: Task = {

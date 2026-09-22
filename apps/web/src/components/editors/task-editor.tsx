@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useForm } from "@tanstack/react-form";
 import {
-  addCalendarDays,
   localDate,
   localTime,
   zonedInstant,
@@ -23,7 +22,7 @@ import { SelectControl } from "../select-control";
 import { DatePicker, FormError, TagPicker, TimePicker } from "./fields";
 
 export function TaskEditor({ task }: { task?: Task }) {
-  const { snapshot, timeZone, now, closeEditor } = useWorkspace();
+  const { snapshot, timeZone, closeEditor } = useWorkspace();
   const action = useAction();
   const [validationError, setValidationError] = useState("");
   const form = useForm({
@@ -31,19 +30,21 @@ export function TaskEditor({ task }: { task?: Task }) {
       title: task?.title ?? "",
       notes: task?.notes ?? "",
       priority: task?.priority ?? ("normal" as Task["priority"]),
-      dueDate: task
-        ? localDate(task.dueAt, timeZone)
-        : addCalendarDays(localDate(now, timeZone), 1),
+      dueDate: task ? localDate(task.dueAt, timeZone) : "",
       dueTime: task && !task.dateOnly ? localTime(task.dueAt, timeZone) : "",
-      estimatedMinutes: task?.estimatedMinutes ?? 60,
+      estimatedMinutes: task ? String(task.estimatedMinutes) : "",
       tagIds: task?.tagIds ?? ([] as string[]),
       eventId: task?.eventId ?? "",
     },
     onSubmit: async ({ value }) => {
       setValidationError("");
       try {
+        if (!value.dueDate || !value.estimatedMinutes) {
+          throw new Error("Indique une date limite et le temps estimé.");
+        }
         const data = taskFieldsSchema.parse({
           ...value,
+          estimatedMinutes: Number(value.estimatedMinutes),
           dateOnly: !value.dueTime,
           dueAt: zonedInstant(value.dueDate, value.dueTime || "23:59", timeZone),
           eventId: value.eventId || null,
@@ -144,7 +145,8 @@ export function TaskEditor({ task }: { task?: Task }) {
                 max={100000}
                 required
                 value={field.state.value}
-                onChange={(event) => field.handleChange(Number(event.target.value))}
+                placeholder="Par exemple 60"
+                onChange={(event) => field.handleChange(event.target.value)}
               />
               <FieldDescription>
                 Une première idée suffit. Tu pourras l’ajuster en avançant.

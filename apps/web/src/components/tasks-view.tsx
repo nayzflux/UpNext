@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { getTaskMetrics, type Task } from "@upnext/contracts";
 import { useWorkspace } from "./workspace-context";
-import { duration, formatDate, priorityLabels } from "@/lib/format";
+import { duration, formatDate, formatTimeUntil, priorityLabels } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -72,8 +72,7 @@ export function TasksView() {
           return false;
         if (tag === "none" && task.tagIds.length > 0) return false;
         if (tag !== "all" && tag !== "none" && !task.tagIds.includes(tag)) return false;
-        if (status === "active" && planning !== "done" && task.progress === 100)
-          return false;
+        if (status === "active" && planning !== "done" && task.progress === 100) return false;
         if (status === "not-started" && task.progress !== 0) return false;
         if (status === "in-progress" && (task.progress === 0 || task.progress === 100))
           return false;
@@ -140,7 +139,8 @@ export function TasksView() {
                 : "text-muted-foreground"
             }
           >
-            {formatDate(row.original.dueAt, timeZone)}
+            {formatDate(row.original.dueAt, timeZone)} ·{" "}
+            {formatTimeUntil(row.original.dueAt, snapshot.serverNow)}
           </span>
         ),
       },

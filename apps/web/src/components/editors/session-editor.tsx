@@ -40,41 +40,32 @@ export function SessionEditor({
   initialMinutes?: number;
 }) {
   const { snapshot, timeZone, now, closeEditor } = useWorkspace();
-  const [selectedTaskId, setSelectedTaskId] = useState(
-    session?.taskId ?? taskId ?? snapshot.tasks.find((task) => task.progress < 100)?.id ?? "",
-  );
+  const [selectedTaskId, setSelectedTaskId] = useState(session?.taskId ?? taskId ?? "");
   const task = snapshot.tasks.find((task) => task.id === selectedTaskId);
   const [start, setStart] = useState(
-    dateTimeInput(
-      initialStart ??
-        session?.startAt ??
-        new Date(Math.ceil(now.getTime() / 900000) * 900000).toISOString(),
-      timeZone,
-    ),
+    initialStart || session ? dateTimeInput(initialStart ?? session!.startAt, timeZone) : "",
   );
   const [minutes, setMinutes] = useState(
-    initialMinutes ??
-      (session
-        ? minutesBetween(session.startAt, session.endAt)
-        : Math.min(
-            60,
-            task
-              ? getTaskMetrics(task, snapshot.sessions, snapshot.logs, now).unplannedMinutes || 60
-              : 60,
-          )),
+    String(initialMinutes ?? (session ? minutesBetween(session.startAt, session.endAt) : "")),
   );
-  const [customPercent, setCustomPercent] = useState<number | null>(
-    session?.plannedPercent ?? null,
+  const [customPercent, setCustomPercent] = useState(
+    session ? String(session.plannedPercent) : "",
   );
   const [allowOverlap, setAllowOverlap] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [validationError, setValidationError] = useState("");
   const action = useAction();
+  const parsedMinutes = Number(minutes);
+  const hasMinutes = minutes !== "" && Number.isFinite(parsedMinutes);
   const suggestions = useQuery({
     ...orpc.suggestions.get.queryOptions({
-      input: { taskId: selectedTaskId, durationMinutes: Math.min(480, Math.max(5, minutes)) },
+      input: {
+        taskId: selectedTaskId,
+        durationMinutes: Math.min(480, Math.max(5, hasMinutes ? parsedMinutes : 5)),
+      },
     }),
-    enabled: showSuggestions && !!task && minutes >= 5 && minutes <= 480,
+    enabled:
+      showSuggestions && !!task && hasMinutes && parsedMinutes >= 5 && parsedMinutes <= 480,
   });
   const metrics = task ? getTaskMetrics(task, snapshot.sessions, snapshot.logs, now) : null;
   const availablePercent = task
@@ -85,16 +76,17 @@ export function SessionEditor({
           plannedSessionPercent(task.id, snapshot.sessions, now, session?.id),
       )
     : 0;
-  const percentage = task
-    ? (customPercent ??
-      Math.min(availablePercent, defaultSessionPercent(minutes, task.estimatedMinutes)))
-    : 0;
+  const suggestedPercent =
+    task && hasMinutes
+      ? Math.min(availablePercent, defaultSessionPercent(parsedMinutes, task.estimatedMinutes))
+      : 0;
+  const percentage = customPercent === "" ? suggestedPercent : Number(customPercent);
   const exceeds = percentage > availablePercent + 0.000001;
   let late = false;
   try {
     late =
       !!task &&
-      new Date(inputToInstant(start, timeZone)).getTime() + minutes * 60000 >
+      new Date(inputToInstant(start, timeZone)).getTime() + parsedMinutes * 60000 >
         new Date(task.dueAt).getTime();
   } catch {
     /* Validated on submission. */
@@ -102,13 +94,19 @@ export function SessionEditor({
   async function save(event: React.FormEvent) {
     event.preventDefault();
     setValidationError("");
+    if (!selectedTaskId || !start.includes("T") || !hasMinutes) {
+      setValidationError("Choisis une tâche, un créneau et une durée.");
+      return;
+    }
     if (exceeds || !Number.isFinite(percentage) || percentage < 0) {
       setValidationError("La part planifiée dépasse les 100 % de cette tâche.");
       return;
     }
     try {
       const startAt = inputToInstant(start, timeZone);
-      const endAt = new Date(new Date(startAt).getTime() + minutes * 60000).toISOString();
+      const endAt = new Date(
+        new Date(startAt).getTime() + parsedMinutes * 60000,
+      ).toISOString();
       const saved = await action.run(
         () =>
           api.sessions.save({
@@ -117,7 +115,7 @@ export function SessionEditor({
             taskId: selectedTaskId,
             startAt,
             endAt,
-            plannedPercent: percentage,
+            plannedPercent: customPercent === "" ? undefined : percentage,
             allowOverlap,
           }),
         "Séance enregistrée dans ton planning",
@@ -148,17 +146,7 @@ export function SessionEditor({
                 return;
               }
               setSelectedTaskId(nextValue);
-              setCustomPercent(null);
-              const selectedTask = snapshot.tasks.find((item) => item.id === nextValue);
-              if (selectedTask) {
-                const unplannedMinutes = getTaskMetrics(
-                  selectedTask,
-                  snapshot.sessions,
-                  snapshot.logs,
-                  now,
-                ).unplannedMinutes;
-                setMinutes(Math.min(60, unplannedMinutes || 60));
-              }
+              setCustomPercent("");
               setShowSuggestions(false);
             }}
           />
@@ -179,7 +167,8 @@ export function SessionEditor({
               max={1440}
               required
               value={minutes}
-              onChange={(event) => setMinutes(Number(event.target.value))}
+              placeholder="Par exemple 60"
+              onChange={(event) => setMinutes(event.target.value)}
             />
           </Field>
           <Field data-invalid={exceeds || undefined}>
@@ -190,9 +179,14 @@ export function SessionEditor({
               min={0}
               max={availablePercent}
               step="any"
-              value={percentage}
+              value={customPercent}
+              placeholder={
+                suggestedPercent
+                  ? `${suggestedPercent.toLocaleString("fr-FR")} % proposé`
+                  : "Automatique"
+              }
               aria-invalid={exceeds}
-              onChange={(event) => setCustomPercent(Number(event.target.value))}
+              onChange={(event) => setCustomPercent(event.target.value)}
             />
           </Field>
         </div>
@@ -242,7 +236,7 @@ export function SessionEditor({
             type="button"
             variant="outline"
             className="mt-3 w-full"
-            disabled={!task || minutes < 5 || minutes > 480}
+            disabled={!task || !hasMinutes || parsedMinutes < 5 || parsedMinutes > 480}
             onClick={() => {
               setShowSuggestions(true);
               if (showSuggestions) void suggestions.refetch();
@@ -267,7 +261,7 @@ export function SessionEditor({
                 <span className="flex flex-col items-start gap-1 text-left">
                   <span>
                     {formatDate(slot.startAt, timeZone, "EEE d MMM · HH:mm")} ·{" "}
-                    {duration(minutes)}
+                    {duration(parsedMinutes)}
                   </span>
                   <span className="text-xs font-normal text-muted-foreground">
                     {slot.reason}

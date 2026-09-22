@@ -59,7 +59,7 @@ Pour créer un tag, saisir un nom dans la tâche puis choisir `Créer « nom »`
 
 Une séance propose par défaut une part de la tâche calculée à partir de sa durée et de l’estimation. Cette part peut ensuite être modifiée sans changer la durée. L’avancement réel et les parts des séances futures ne peuvent pas dépasser 100 % au moment de la planification ; la durée réservée peut, elle, dépasser l’estimation. Un bilan remplace la part prévue par l’avancement réellement déclaré et réduit, si nécessaire, les parts des séances futures. Une séance passée sans bilan ne réserve plus de part. Changer l’estimation ne déplace aucune séance et ne modifie pas les parts déjà prévues. Les échéances sans heure sont fixées à 23 h 59 dans le fuseau du compte.
 
-Après une séance, renseigner le début réel, les minutes travaillées et le pourcentage **total** atteint. On peut déclarer une séance manquée, enregistrer du travail sans réservation et corriger le dernier bilan d’une tâche. Une séance passée reste « À confirmer » tant qu’aucun bilan n’est enregistré.
+Après une séance effectuée, le bilan propose la durée et le pourcentage **total** atteint à partir du créneau prévu. Chacune de ces valeurs peut être ajustée séparément, avec une note facultative. Le début réel n’est pas demandé. Une séance déclarée non faite ne demande aucune autre information. Un créneau terminé sans bilan apparaît automatiquement « Expirée · non faite » ; il reste possible de renseigner ensuite le travail réellement effectué. On peut aussi enregistrer du travail sans réservation et corriger le dernier bilan d’une tâche.
 
 ### Calculs
 

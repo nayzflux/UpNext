@@ -1,16 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import {
-  ArrowRight,
-  CalendarPlus,
-  Check,
-  ChevronRight,
-  Clock3,
-  Leaf,
-  Plus,
-  Sun,
-} from "lucide-react";
+import { ArrowRight, CalendarPlus, Check, ChevronRight, Leaf, Plus, Sun } from "lucide-react";
 import {
   addCalendarDays,
   expandEvents,
@@ -45,12 +36,6 @@ export function TodayView() {
       session.status !== "cancelled" &&
       new Date(session.startAt) < new Date(end) &&
       new Date(session.endAt) > new Date(start),
-  );
-  const pending = snapshot.sessions.filter(
-    (session) =>
-      session.status === "planned" &&
-      new Date(session.endAt) < now &&
-      active.some((task) => task.id === session.taskId),
   );
   const events = expandEvents(snapshot.events, start, end);
   const timeline = [
@@ -181,44 +166,6 @@ export function TodayView() {
               })}
             </div>
           </section>
-          {pending.length > 0 && (
-            <section>
-              <div className="section-heading">
-                <h2>
-                  Un petit bilan ? <span>{pending.length}</span>
-                </h2>
-              </div>
-              <div className="surface">
-                {pending.slice(0, 5).map((session) => (
-                  <div className="pending-row" key={session.id}>
-                    <Clock3 className="size-4 text-muted-foreground" />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold">
-                        {snapshot.tasks.find((task) => task.id === session.taskId)?.title}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatDate(session.startAt, timeZone, "d MMM · HH:mm")} ·{" "}
-                        {duration(minutesBetween(session.startAt, session.endAt))} prévues
-                      </p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        openEditor({
-                          type: "log",
-                          taskId: session.taskId,
-                          sessionId: session.id,
-                        })
-                      }
-                    >
-                      Faire le bilan
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
         </div>
         <aside className="flex min-w-0 flex-col gap-6">
           <section className="surface day-agenda">
@@ -273,7 +220,11 @@ export function TodayView() {
                             </Button>
                           ) : (
                             <Badge variant="outline">
-                              {item.session.status === "completed" ? "Effectuée" : "Manquée"}
+                              {item.session.status === "completed"
+                                ? "Effectuée"
+                                : item.session.status === "expired"
+                                  ? "Expirée · non faite"
+                                  : "Manquée"}
                             </Badge>
                           ))}
                       </div>

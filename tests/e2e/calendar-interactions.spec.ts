@@ -30,7 +30,8 @@ test("modal centré, aperçu à taille réelle, snap et redimensionnement sur la
   await page
     .getByRole("button", { name: "Planifier Séance de deux heures", exact: true })
     .click();
-  await expect(page.getByLabel("Durée, en minutes")).toHaveValue("120");
+  await expect(page.getByLabel("Durée, en minutes")).toHaveValue("");
+  await page.getByLabel("Durée, en minutes").fill("120");
   await setDateTime(page, "Début de la séance", `${date}T10:00`);
   await page.getByRole("button", { name: "Planifier la séance", exact: true }).click();
   await expect(modal).toHaveCount(0);
@@ -158,10 +159,9 @@ test("séances courtes (15 min) : lisibilité, compacité et poignée de redimen
   await page.goto(`/calendrier?date=${date}`);
   await page.reload();
   await page.getByRole("button", { name: "Jour", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Planifier Point rapide 15m", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Planifier Point rapide 15m", exact: true }).click();
   await setDateTime(page, "Début de la séance", `${date}T09:00`);
+  await page.getByLabel("Durée, en minutes").fill("15");
   await page.getByRole("button", { name: "Planifier la séance", exact: true }).click();
   const modal = page.getByTestId("editor-modal");
   await expect(modal).toHaveCount(0);

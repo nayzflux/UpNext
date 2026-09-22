@@ -184,7 +184,11 @@ export async function saveSession(userId: string, input: z.infer<typeof sessionI
         .from(studySessions)
         .where(and(eq(studySessions.id, input.id), eq(studySessions.userId, userId)));
       if (!existing) throw notFound();
-      if (existing.revision !== input.revision || existing.status !== "planned")
+      if (
+        existing.revision !== input.revision ||
+        existing.status !== "planned" ||
+        new Date(existing.endAt) <= new Date()
+      )
         throw revisionConflict();
     }
     const snapshot = await getSnapshot(userId, connection);
@@ -244,7 +248,11 @@ export async function cancelSession(userId: string, id: string, revision: number
       .from(studySessions)
       .where(and(eq(studySessions.id, id), eq(studySessions.userId, userId)));
     if (!existing) throw notFound();
-    if (existing.revision !== revision || existing.status !== "planned")
+    if (
+      existing.revision !== revision ||
+      existing.status !== "planned" ||
+      new Date(existing.endAt) <= new Date()
+    )
       throw revisionConflict();
     await connection
       .update(studySessions)
@@ -266,14 +274,6 @@ export async function saveLog(userId: string, input: z.infer<typeof logInputSche
       return { log: logToWire(sameRequest), suggestedEstimate: null };
     }
     if (task.revision !== input.taskRevision) throw revisionConflict();
-    if (
-      new Date(input.actualStartAt).getTime() + input.actualMinutes * 60000 >
-      Date.now() + 60000
-    ) {
-      throw new ORPCError("BAD_REQUEST", {
-        message: "Le bilan doit décrire une séance déjà effectuée.",
-      });
-    }
     const [latest] = await connection
       .select()
       .from(workLogs)
@@ -287,9 +287,15 @@ export async function saveLog(userId: string, input: z.infer<typeof logInputSche
     }
     if (input.id && latest.sessionId !== input.sessionId) throw revisionConflict();
     const progressBefore = input.id ? latest.progressBefore : task.progress;
+    const actualMinutes = input.missed ? 0 : input.actualMinutes;
     const progressAfter = input.missed ? progressBefore : input.progressAfter;
-    if (input.missed && input.actualMinutes !== 0) throw new ORPCError("BAD_REQUEST");
+    if (actualMinutes === undefined || progressAfter === undefined) {
+      throw new ORPCError("BAD_REQUEST", {
+        message: "Indique le temps passé et l’avancement de la tâche.",
+      });
+    }
 
+    let sessionStartAt: string | undefined;
     if (input.sessionId) {
       const [session] = await connection
         .select()
@@ -302,6 +308,7 @@ export async function saveLog(userId: string, input: z.infer<typeof logInputSche
           ),
         );
       if (!session) throw notFound();
+      sessionStartAt = session.startAt;
       if (!input.id && session.status !== "planned") throw revisionConflict();
       if (input.missed && new Date(session.startAt) > new Date()) {
         throw new ORPCError("BAD_REQUEST", {
@@ -318,13 +325,24 @@ export async function saveLog(userId: string, input: z.infer<typeof logInputSche
         })
         .where(eq(studySessions.id, session.id));
     }
+    const actualStartAt = input.id
+      ? latest.actualStartAt
+      : (sessionStartAt ?? new Date(Date.now() - actualMinutes * 60000).toISOString());
+    if (
+      !input.missed &&
+      new Date(actualStartAt).getTime() + actualMinutes * 60000 > Date.now() + 60000
+    ) {
+      throw new ORPCError("BAD_REQUEST", {
+        message: "Le bilan doit décrire une séance déjà effectuée.",
+      });
+    }
     const values = {
       requestId: input.requestId,
-      actualStartAt: input.actualStartAt,
-      actualMinutes: input.actualMinutes,
+      actualStartAt,
+      actualMinutes,
       progressBefore,
       progressAfter,
-      note: input.note,
+      note: input.missed ? "" : input.note,
       missed: input.missed,
     };
     const [saved] = input.id
@@ -386,12 +404,12 @@ export async function saveLog(userId: string, input: z.infer<typeof logInputSche
       .select()
       .from(workLogs)
       .where(and(eq(workLogs.taskId, task.id), eq(workLogs.userId, userId)));
-    const actualMinutes = allLogs.reduce((total, log) => total + log.actualMinutes, 0);
+    const totalActualMinutes = allLogs.reduce((total, log) => total + log.actualMinutes, 0);
     return {
       log: logToWire(saved),
       suggestedEstimate: suggestedEstimate(
         task.estimatedMinutes,
-        actualMinutes,
+        totalActualMinutes,
         progressAfter,
       ),
     };

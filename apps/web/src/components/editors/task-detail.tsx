@@ -26,7 +26,9 @@ export function TaskDetail({ task }: { task: Task }) {
         <TaskTags task={task} />
         <div className="flex items-center gap-2">
           <PlanningBadge status={metrics.planning} />
-          <Badge variant="outline">Priorité {priorityLabels[task.priority].toLowerCase()}</Badge>
+          <Badge variant="outline">
+            Priorité {priorityLabels[task.priority].toLowerCase()}
+          </Badge>
         </div>
       </div>
       {task.notes && (
@@ -116,14 +118,14 @@ export function TaskDetail({ task }: { task: Task }) {
                     {duration(minutesBetween(session.startAt, session.endAt))} ·{" "}
                     {session.plannedPercent.toLocaleString("fr-FR")} % prévus ·{" "}
                     {session.status === "planned"
-                      ? new Date(session.endAt) < now
-                        ? "À confirmer"
-                        : "Prévue"
+                      ? "Prévue"
                       : session.status === "completed"
                         ? "Effectuée"
-                        : session.status === "missed"
-                          ? "Manquée"
-                          : "Annulée"}
+                        : session.status === "expired"
+                          ? "Expirée · non faite"
+                          : session.status === "missed"
+                            ? "Manquée"
+                            : "Annulée"}
                   </p>
                 </div>
                 {session.status === "planned" && (
@@ -165,6 +167,17 @@ export function TaskDetail({ task }: { task: Task }) {
                       </Button>
                     </ConfirmAction>
                   </div>
+                )}
+                {session.status === "expired" && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() =>
+                      openEditor({ type: "log", taskId: task.id, sessionId: session.id })
+                    }
+                  >
+                    Renseigner si effectuée
+                  </Button>
                 )}
               </div>
             ))}
