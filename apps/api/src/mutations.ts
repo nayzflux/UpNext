@@ -1,10 +1,13 @@
 import { and, desc, eq, gt, inArray, sql } from "drizzle-orm";
 import { ORPCError } from "@orpc/server";
 import {
+  defaultSessionPercent,
   expandEvents,
   localDate,
+  minutesBetween,
   normalizeTagName,
   overlaps,
+  plannedSessionPercent,
   suggestedEstimate,
   type CalendarEvent,
   type Preferences,
@@ -185,6 +188,23 @@ export async function saveSession(userId: string, input: z.infer<typeof sessionI
         throw revisionConflict();
     }
     const snapshot = await getSnapshot(userId, connection);
+    const now = new Date();
+    const assignedPercent = plannedSessionPercent(task.id, snapshot.sessions, now, input.id);
+    const availablePercent = Math.max(0, 100 - task.progress - assignedPercent);
+    const plannedPercent =
+      input.plannedPercent ??
+      Math.min(
+        availablePercent,
+        defaultSessionPercent(
+          minutesBetween(input.startAt, input.endAt),
+          task.estimatedMinutes,
+        ),
+      );
+    if (new Date(input.endAt) > now && plannedPercent > availablePercent + 0.000001) {
+      throw new ORPCError("BAD_REQUEST", {
+        message: "La part planifiée dépasse les 100 % de cette tâche.",
+      });
+    }
     const busy = [
       ...snapshot.sessions.filter(
         (session) => session.id !== input.id && session.status === "planned",
@@ -197,7 +217,12 @@ export async function saveSession(userId: string, input: z.infer<typeof sessionI
           "Ce créneau chevauche une séance ou un événement. Confirme le chevauchement pour le conserver.",
       });
     }
-    const values = { taskId: input.taskId, startAt: input.startAt, endAt: input.endAt };
+    const values = {
+      taskId: input.taskId,
+      startAt: input.startAt,
+      endAt: input.endAt,
+      plannedPercent,
+    };
     const [saved] = input.id
       ? await connection
           .update(studySessions)
@@ -316,6 +341,7 @@ export async function saveLog(userId: string, input: z.infer<typeof logInputSche
       .update(tasks)
       .set({ progress: progressAfter, revision: task.revision + 1 })
       .where(eq(tasks.id, task.id));
+    const now = new Date().toISOString();
     if (progressAfter === 100) {
       await connection
         .update(studySessions)
@@ -328,9 +354,33 @@ export async function saveLog(userId: string, input: z.infer<typeof logInputSche
           and(
             eq(studySessions.taskId, task.id),
             eq(studySessions.status, "planned"),
-            gt(studySessions.startAt, new Date().toISOString()),
+            gt(studySessions.endAt, now),
           ),
         );
+    } else {
+      const futureSessions = await connection
+        .select()
+        .from(studySessions)
+        .where(
+          and(
+            eq(studySessions.taskId, task.id),
+            eq(studySessions.status, "planned"),
+            gt(studySessions.endAt, now),
+          ),
+        )
+        .orderBy(studySessions.startAt, studySessions.id);
+      let availablePercent = 100 - progressAfter;
+
+      for (const session of futureSessions) {
+        const plannedPercent = Math.min(session.plannedPercent, Math.max(0, availablePercent));
+        if (plannedPercent !== session.plannedPercent) {
+          await connection
+            .update(studySessions)
+            .set({ plannedPercent, revision: session.revision + 1 })
+            .where(eq(studySessions.id, session.id));
+        }
+        availablePercent -= plannedPercent;
+      }
     }
     const allLogs = await connection
       .select()

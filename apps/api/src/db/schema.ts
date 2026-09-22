@@ -187,6 +187,7 @@ export const studySessions = pgTable(
       .references(() => tasks.id, { onDelete: "cascade" }),
     startAt: timestamp("start_at", { withTimezone: true, mode: "string" }).notNull(),
     endAt: timestamp("end_at", { withTimezone: true, mode: "string" }).notNull(),
+    plannedPercent: doublePrecision("planned_percent").notNull().default(0),
     status: text("status")
       .$type<"planned" | "completed" | "missed" | "cancelled">()
       .notNull()
@@ -197,6 +198,10 @@ export const studySessions = pgTable(
   (table) => [
     index("study_sessions_user_start_idx").on(table.userId, table.startAt),
     check("session_interval", sql`${table.endAt} > ${table.startAt}`),
+    check(
+      "session_planned_percent_range",
+      sql`${table.plannedPercent} >= 0 AND ${table.plannedPercent} <= 100`,
+    ),
   ],
 );
 

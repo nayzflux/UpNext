@@ -17,7 +17,7 @@ import {
   saveTag,
   saveTask,
 } from "./mutations";
-import { taskFieldsSchema, type Task } from "@upnext/contracts";
+import { getTaskMetrics, taskFieldsSchema, type Task } from "@upnext/contracts";
 
 const alice = crypto.randomUUID();
 const bob = crypto.randomUUID();
@@ -192,6 +192,105 @@ describe("PostgreSQL : propriété, contraintes et transactions", () => {
       startAt: input.startAt,
       endAt: input.endAt,
       allowOverlap: true,
+    });
+  });
+  it("limite les parts planifiées à 100 % sans limiter la durée des séances", async () => {
+    const task = await saveTask(alice, { ...taskInput(), estimatedMinutes: 60 });
+    const startAt = future(20);
+    const endAt = new Date(new Date(startAt).getTime() + 30 * 60000).toISOString();
+    const first = await saveSession(alice, {
+      taskId: task.id,
+      startAt,
+      endAt,
+      allowOverlap: true,
+    });
+    expect(first.plannedPercent).toBe(50);
+    let snapshot = await getSnapshot(alice);
+    expect(getTaskMetrics(task, snapshot.sessions, snapshot.logs)).toMatchObject({
+      plannedMinutes: 30,
+      plannedPercent: 50,
+      unplannedMinutes: 30,
+    });
+
+    const second = await saveSession(alice, {
+      taskId: task.id,
+      startAt: future(21),
+      endAt: future(21, 11),
+      plannedPercent: 10,
+      allowOverlap: true,
+    });
+    expect(second.plannedPercent).toBe(10);
+    snapshot = await getSnapshot(alice);
+    expect(getTaskMetrics(task, snapshot.sessions, snapshot.logs)).toMatchObject({
+      plannedMinutes: 90,
+      plannedPercent: 60,
+      unplannedMinutes: 24,
+    });
+
+    await expect(
+      saveSession(alice, {
+        taskId: task.id,
+        startAt: future(22),
+        endAt: future(22, 11),
+        plannedPercent: 41,
+        allowOverlap: true,
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    const longer = await saveSession(alice, {
+      taskId: task.id,
+      startAt: future(22),
+      endAt: future(22, 12),
+      plannedPercent: 40,
+      allowOverlap: true,
+    });
+    expect(longer.plannedPercent).toBe(40);
+    snapshot = await getSnapshot(alice);
+    expect(getTaskMetrics(task, snapshot.sessions, snapshot.logs)).toMatchObject({
+      plannedMinutes: 210,
+      plannedPercent: 100,
+      unplannedMinutes: 0,
+    });
+    const extra = await saveSession(alice, {
+      taskId: task.id,
+      startAt: future(23),
+      endAt: future(23, 11),
+      plannedPercent: 0,
+      allowOverlap: true,
+    });
+    expect(extra.plannedPercent).toBe(0);
+  });
+  it("réduit les parts futures quand un bilan réel avance plus vite que prévu", async () => {
+    const task = await saveTask(bob, taskInput());
+    const first = await saveSession(bob, {
+      taskId: task.id,
+      startAt: future(24),
+      endAt: future(24, 12),
+      allowOverlap: true,
+    });
+    const second = await saveSession(bob, {
+      taskId: task.id,
+      startAt: future(25),
+      endAt: future(25, 11),
+      plannedPercent: 40,
+      allowOverlap: true,
+    });
+    expect(first.plannedPercent).toBe(50);
+    await saveLog(bob, { ...logInput(task), progressAfter: 80 });
+
+    const snapshot = await getSnapshot(bob);
+    expect(snapshot.sessions.find((item) => item.id === first.id)).toMatchObject({
+      plannedPercent: 20,
+      revision: first.revision + 1,
+    });
+    expect(snapshot.sessions.find((item) => item.id === second.id)).toMatchObject({
+      plannedPercent: 0,
+      revision: second.revision + 1,
+    });
+    expect(
+      getTaskMetrics({ ...task, progress: 80 }, snapshot.sessions, snapshot.logs),
+    ).toMatchObject({
+      plannedPercent: 20,
+      unplannedMinutes: 0,
     });
   });
   it("à 100 %, annule les futures séances et garde leur historique", async () => {

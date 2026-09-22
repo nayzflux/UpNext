@@ -4,9 +4,10 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarClock, Sparkles } from "lucide-react";
 import {
+  defaultSessionPercent,
   getTaskMetrics,
   minutesBetween,
-  percentageToMinutes,
+  plannedSessionPercent,
   type Session,
 } from "@upnext/contracts";
 import { api, orpc } from "@/lib/api";
@@ -58,9 +59,12 @@ export function SessionEditor({
         : Math.min(
             60,
             task
-              ? getTaskMetrics(task, snapshot.sessions, snapshot.logs, now).remainingMinutes
+              ? getTaskMetrics(task, snapshot.sessions, snapshot.logs, now).unplannedMinutes || 60
               : 60,
           )),
+  );
+  const [customPercent, setCustomPercent] = useState<number | null>(
+    session?.plannedPercent ?? null,
   );
   const [allowOverlap, setAllowOverlap] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -73,7 +77,19 @@ export function SessionEditor({
     enabled: showSuggestions && !!task && minutes >= 5 && minutes <= 480,
   });
   const metrics = task ? getTaskMetrics(task, snapshot.sessions, snapshot.logs, now) : null;
-  const percentage = task ? Math.round((minutes / task.estimatedMinutes) * 1000) / 10 : 0;
+  const availablePercent = task
+    ? Math.max(
+        0,
+        100 -
+          task.progress -
+          plannedSessionPercent(task.id, snapshot.sessions, now, session?.id),
+      )
+    : 0;
+  const percentage = task
+    ? (customPercent ??
+      Math.min(availablePercent, defaultSessionPercent(minutes, task.estimatedMinutes)))
+    : 0;
+  const exceeds = percentage > availablePercent + 0.000001;
   let late = false;
   try {
     late =
@@ -83,16 +99,13 @@ export function SessionEditor({
   } catch {
     /* Validated on submission. */
   }
-  const exceeds =
-    !!metrics &&
-    minutes +
-      metrics.plannedMinutes -
-      (session ? minutesBetween(session.startAt, session.endAt) : 0) >
-      metrics.remainingMinutes;
-
   async function save(event: React.FormEvent) {
     event.preventDefault();
     setValidationError("");
+    if (exceeds || !Number.isFinite(percentage) || percentage < 0) {
+      setValidationError("La part planifiée dépasse les 100 % de cette tâche.");
+      return;
+    }
     try {
       const startAt = inputToInstant(start, timeZone);
       const endAt = new Date(new Date(startAt).getTime() + minutes * 60000).toISOString();
@@ -104,6 +117,7 @@ export function SessionEditor({
             taskId: selectedTaskId,
             startAt,
             endAt,
+            plannedPercent: percentage,
             allowOverlap,
           }),
         "Séance enregistrée dans ton planning",
@@ -134,6 +148,17 @@ export function SessionEditor({
                 return;
               }
               setSelectedTaskId(nextValue);
+              setCustomPercent(null);
+              const selectedTask = snapshot.tasks.find((item) => item.id === nextValue);
+              if (selectedTask) {
+                const unplannedMinutes = getTaskMetrics(
+                  selectedTask,
+                  snapshot.sessions,
+                  snapshot.logs,
+                  now,
+                ).unplannedMinutes;
+                setMinutes(Math.min(60, unplannedMinutes || 60));
+              }
               setShowSuggestions(false);
             }}
           />
@@ -157,28 +182,30 @@ export function SessionEditor({
               onChange={(event) => setMinutes(Number(event.target.value))}
             />
           </Field>
-          <Field>
+          <Field data-invalid={exceeds || undefined}>
             <FieldLabel htmlFor="session-percentage">Part de la tâche, en %</FieldLabel>
             <Input
               id="session-percentage"
               type="number"
-              min={1}
-              max={1000}
+              min={0}
+              max={availablePercent}
               step="any"
               value={percentage}
-              onChange={(event) => {
-                if (task)
-                  setMinutes(
-                    percentageToMinutes(Number(event.target.value), task.estimatedMinutes),
-                  );
-              }}
+              aria-invalid={exceeds}
+              onChange={(event) => setCustomPercent(Number(event.target.value))}
             />
           </Field>
         </div>
         <FieldDescription>
-          Le pourcentage prévu suit la durée réservée. Tu renseigneras l’avancement réel après
-          la séance.
+          La durée propose une part par défaut. Tu peux modifier cette part sans changer le
+          temps réservé. L’avancement réel sera renseigné après la séance.
         </FieldDescription>
+        {metrics && (
+          <FieldDescription>
+            {duration(metrics.unplannedMinutes)} à planifier · {availablePercent.toFixed(1)} %
+            encore attribuables.
+          </FieldDescription>
+        )}
         {late && (
           <Alert>
             <AlertDescription>
@@ -189,7 +216,7 @@ export function SessionEditor({
         {exceeds && (
           <Alert>
             <AlertDescription>
-              La durée réservée dépasse le travail restant estimé.
+              La part totale planifiée dépasserait les 100 % de cette tâche.
             </AlertDescription>
           </Alert>
         )}
@@ -267,7 +294,7 @@ export function SessionEditor({
         <Button type="button" variant="outline" onClick={closeEditor}>
           Annuler
         </Button>
-        <Button type="submit" disabled={action.pending || !task}>
+        <Button type="submit" disabled={action.pending || !task || exceeds}>
           {action.pending && <Spinner data-icon="inline-start" />}
           {session ? "Enregistrer" : "Planifier la séance"}
         </Button>

@@ -28,6 +28,7 @@ const session: Session = {
   taskId: task.id,
   startAt: "2026-09-21T08:00:00.000Z",
   endAt: "2026-09-21T10:00:00.000Z",
+  plannedPercent: 100,
   status: "planned",
   cancellationReason: null,
   revision: 0,

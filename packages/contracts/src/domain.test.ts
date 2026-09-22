@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  defaultSessionPercent,
   expandEvents,
   getTaskMetrics,
   localTime,
@@ -45,6 +46,10 @@ function session(startAt: string, endAt: string): Session {
     taskId: task.id,
     startAt,
     endAt,
+    plannedPercent: defaultSessionPercent(
+      (new Date(endAt).getTime() - new Date(startAt).getTime()) / 60000,
+      task.estimatedMinutes,
+    ),
     status: "planned",
     cancellationReason: null,
     revision: 0,
@@ -105,6 +110,7 @@ describe("tâches, tags et avancement", () => {
     expect(metrics).toEqual({
       remainingMinutes: 180,
       plannedMinutes: 60,
+      plannedPercent: 25,
       actualMinutes: 90,
       unplannedMinutes: 120,
       planning: "partial",
@@ -114,6 +120,7 @@ describe("tâches, tags et avancement", () => {
     const past = session("2026-03-22T15:00:00Z", "2026-03-22T19:00:00Z");
     expect(getTaskMetrics(task, [past], [], now)).toMatchObject({
       plannedMinutes: 0,
+      plannedPercent: 0,
       unplannedMinutes: 180,
       planning: "none",
     });
@@ -124,10 +131,43 @@ describe("tâches, tags et avancement", () => {
       getTaskMetrics(task, [session("2026-03-24T10:00:00Z", "2026-03-24T15:00:00Z")], [], now),
     ).toMatchObject({ unplannedMinutes: 0, planning: "full" });
   });
-  it("retourne l’état planning 'done' lorsque la tâche est terminée (100 %)", () => {
+  it("retire les séances futures du reste à planifier selon leur part, sans lier part et durée", () => {
+    const future = session("2026-03-24T10:00:00Z", "2026-03-24T10:30:00Z");
+    const shortTask = { ...task, estimatedMinutes: 60, progress: 25 };
+    const defaultShare = { ...future, plannedPercent: 50 };
+
+    expect(getTaskMetrics(shortTask, [defaultShare], [], now)).toMatchObject({
+      remainingMinutes: 45,
+      plannedMinutes: 30,
+      plannedPercent: 50,
+      unplannedMinutes: 15,
+      planning: "partial",
+    });
     expect(
-      getTaskMetrics({ ...task, progress: 100 }, [], [], now),
-    ).toMatchObject({ remainingMinutes: 0, unplannedMinutes: 0, planning: "done" });
+      getTaskMetrics(shortTask, [{ ...defaultShare, plannedPercent: 10 }], [], now),
+    ).toMatchObject({ plannedMinutes: 30, plannedPercent: 10, unplannedMinutes: 39 });
+  });
+  it("ne crédite pas la durée prévue d’une séance passée, mais l’avancement réel du bilan", () => {
+    const past = session("2026-03-22T10:00:00Z", "2026-03-22T10:30:00Z");
+    const shortTask = { ...task, estimatedMinutes: 60, progress: 25 };
+
+    expect(getTaskMetrics(shortTask, [past], [log(past.startAt, 45)], now)).toMatchObject({
+      remainingMinutes: 45,
+      plannedMinutes: 0,
+      plannedPercent: 0,
+      actualMinutes: 45,
+      unplannedMinutes: 45,
+    });
+    expect(
+      getTaskMetrics(shortTask, [{ ...past, status: "completed" }], [log(past.startAt)], now),
+    ).toMatchObject({ remainingMinutes: 45, unplannedMinutes: 45 });
+  });
+  it("retourne l’état planning 'done' lorsque la tâche est terminée (100 %)", () => {
+    expect(getTaskMetrics({ ...task, progress: 100 }, [], [], now)).toMatchObject({
+      remainingMinutes: 0,
+      unplannedMinutes: 0,
+      planning: "done",
+    });
   });
   it("convertit 50 % de 4 h en 2 h sans modifier les réservations", () => {
     expect(percentageToMinutes(50, 240)).toBe(120);

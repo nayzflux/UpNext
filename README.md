@@ -57,7 +57,7 @@ Les formulaires s’ouvrent dans un modal centré. Le calendrier affiche toute s
 
 Pour créer un tag, saisir un nom dans la tâche puis choisir `Créer « nom »`. Les espaces superflus, la casse et les formes Unicode équivalentes ne créent pas de doublons. Les tags sont réutilisables et propres au compte. Les renommer actualise toutes les associations ; les supprimer conserve les tâches.
 
-Une réservation de 50 % sur une tâche estimée à quatre heures dure deux heures. Le pourcentage réservé est recalculé à partir de la durée ; changer l’estimation ne déplace jamais une séance. Les échéances sans heure sont fixées à 23 h 59 dans le fuseau du compte.
+Une séance propose par défaut une part de la tâche calculée à partir de sa durée et de l’estimation. Cette part peut ensuite être modifiée sans changer la durée. L’avancement réel et les parts des séances futures ne peuvent pas dépasser 100 % au moment de la planification ; la durée réservée peut, elle, dépasser l’estimation. Un bilan remplace la part prévue par l’avancement réellement déclaré et réduit, si nécessaire, les parts des séances futures. Une séance passée sans bilan ne réserve plus de part. Changer l’estimation ne déplace aucune séance et ne modifie pas les parts déjà prévues. Les échéances sans heure sont fixées à 23 h 59 dans le fuseau du compte.
 
 Après une séance, renseigner le début réel, les minutes travaillées et le pourcentage **total** atteint. On peut déclarer une séance manquée, enregistrer du travail sans réservation et corriger le dernier bilan d’une tâche. Une séance passée reste « À confirmer » tant qu’aucun bilan n’est enregistré.
 
@@ -65,7 +65,7 @@ Après une séance, renseigner le début réel, les minutes travaillées et le p
 
 ```text
 Reste à faire = estimation totale × (1 − avancement / 100)
-À planifier = max(0, reste à faire − durée des séances planifiées non terminées)
+À planifier = estimation totale × max(0, 100 % − avancement réel − parts des séances futures)
 Estimation proposée = temps réellement travaillé / (avancement / 100)
 ```
 

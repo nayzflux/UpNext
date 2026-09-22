@@ -68,6 +68,10 @@ export function TaskDetail({ task }: { task: Task }) {
           <dt>À planifier</dt>
           <dd>{duration(metrics.unplannedMinutes)}</dd>
         </div>
+        <div>
+          <dt>Part déjà planifiée</dt>
+          <dd>{metrics.plannedPercent.toLocaleString("fr-FR")} %</dd>
+        </div>
       </dl>
       <div className="flex flex-wrap gap-2">
         <Button
@@ -110,6 +114,7 @@ export function TaskDetail({ task }: { task: Task }) {
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {duration(minutesBetween(session.startAt, session.endAt))} ·{" "}
+                    {session.plannedPercent.toLocaleString("fr-FR")} % prévus ·{" "}
                     {session.status === "planned"
                       ? new Date(session.endAt) < now
                         ? "À confirmer"
@@ -143,7 +148,7 @@ export function TaskDetail({ task }: { task: Task }) {
                     </Button>
                     <ConfirmAction
                       label="Annuler cette séance ?"
-                      description="Le temps correspondant redeviendra disponible à planifier."
+                      description="La part prévue redeviendra disponible à planifier."
                       onConfirm={() =>
                         action.run(
                           () =>

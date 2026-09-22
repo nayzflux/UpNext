@@ -24,7 +24,7 @@ test("inscription, tags, 50 %, déplacement, refus, bilan et réévaluation", as
   const tomorrow = addCalendarDays(today(), 1);
   await setDateTime(page, "Début de la séance", `${tomorrow}T10:00`);
   await page.getByLabel("Part de la tâche, en %").fill("50");
-  await expect(page.getByLabel("Durée, en minutes")).toHaveValue("120");
+  await expect(page.getByLabel("Durée, en minutes")).toHaveValue("60");
   await page.getByRole("button", { name: "Planifier la séance", exact: true }).click();
   await expect(page.getByTestId("editor-modal")).toHaveCount(0);
 
@@ -50,12 +50,12 @@ test("inscription, tags, 50 %, déplacement, refus, bilan et réévaluation", as
 
   await page.getByRole("button", { name: "Événement", exact: true }).click();
   await page.getByLabel("Nom de l’événement").fill("Rendez-vous");
-  await setDateTime(page, "Début", `${tomorrow}T13:00`);
-  await setDateTime(page, "Fin", `${tomorrow}T14:00`);
+  await setDateTime(page, "Début", `${tomorrow}T12:00`);
+  await setDateTime(page, "Fin", `${tomorrow}T13:00`);
   await page.getByRole("button", { name: "Créer l’événement", exact: true }).click();
   await expect(page.getByTestId("editor-modal")).toHaveCount(0);
   await expect(
-    page.getByRole("button", { name: "Rendez-vous 13:00–14:00 · 1 h", exact: true }),
+    page.getByRole("button", { name: "Rendez-vous 12:00–13:00 · 1 h", exact: true }),
   ).toHaveCount(1);
   const moved = page.getByRole("button", {
     name: "Préparer mon DS, 11:00. Déplacer ou ouvrir la séance.",

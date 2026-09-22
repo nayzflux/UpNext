@@ -18,6 +18,27 @@ export function minutesBetween(start: string, end: string) {
 
 export type PlanningStatus = "none" | "partial" | "full" | "done";
 
+export function plannedSessionPercent(
+  taskId: string,
+  sessions: Session[],
+  now = new Date(),
+  excludedSessionId?: string,
+) {
+  return sessions
+    .filter(
+      (session) =>
+        session.taskId === taskId &&
+        session.id !== excludedSessionId &&
+        session.status === "planned" &&
+        new Date(session.endAt) > now,
+    )
+    .reduce((total, session) => total + session.plannedPercent, 0);
+}
+
+export function defaultSessionPercent(minutes: number, estimatedMinutes: number) {
+  return Math.min(100, Math.round((minutes / estimatedMinutes) * 1000) / 10);
+}
+
 export function getTaskMetrics(
   task: Task,
   sessions: Session[],
@@ -33,21 +54,30 @@ export function getTaskMetrics(
         new Date(session.endAt) > now,
     )
     .reduce((total, session) => total + minutesBetween(session.startAt, session.endAt), 0);
+  const plannedPercent = plannedSessionPercent(task.id, sessions, now);
   const actualMinutes = logs
     .filter((log) => log.taskId === task.id)
     .reduce((total, log) => total + log.actualMinutes, 0);
-  const unplannedMinutes = Math.max(0, remainingMinutes - plannedMinutes);
+  const unplannedPercent = Math.max(0, 100 - task.progress - plannedPercent);
+  const unplannedMinutes = Math.ceil((task.estimatedMinutes * unplannedPercent) / 100);
   let planning: PlanningStatus = "none";
 
   if (task.progress >= 100) {
     planning = "done";
-  } else if (remainingMinutes === 0 || plannedMinutes >= remainingMinutes) {
+  } else if (unplannedPercent === 0) {
     planning = "full";
-  } else if (plannedMinutes > 0) {
+  } else if (plannedPercent > 0) {
     planning = "partial";
   }
 
-  return { remainingMinutes, plannedMinutes, actualMinutes, unplannedMinutes, planning };
+  return {
+    remainingMinutes,
+    plannedMinutes,
+    plannedPercent,
+    actualMinutes,
+    unplannedMinutes,
+    planning,
+  };
 }
 
 export function suggestedEstimate(

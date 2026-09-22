@@ -41,6 +41,7 @@ export const sessionSchema = z.object({
   taskId: idSchema,
   startAt: instantSchema,
   endAt: instantSchema,
+  plannedPercent: z.number().min(0).max(100),
   status: z.enum(["planned", "completed", "missed", "cancelled"]),
   cancellationReason: z.enum(["manual", "task-completed"]).nullable(),
   revision: z.number().int(),
@@ -53,6 +54,7 @@ export const sessionInputSchema = z
     taskId: idSchema,
     startAt: instantSchema,
     endAt: instantSchema,
+    plannedPercent: z.number().min(0).max(100).optional(),
     allowOverlap: z.boolean().default(false),
   })
   .refine(
