@@ -428,7 +428,7 @@ export function CalendarView() {
             </p>
             <div className="flex flex-col gap-3">
               {backlog.map((task) => (
-                <BacklogTask key={task.id} task={task} />
+                <BacklogTask key={task.id} task={task} displayedDate={date} mobile={mobile} />
               ))}
               {backlog.length === 0 && (
                 <Empty className="px-2 py-8">

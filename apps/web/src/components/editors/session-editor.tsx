@@ -32,18 +32,22 @@ export function SessionEditor({
   taskId,
   session,
   initialStart,
+  initialDate,
   initialMinutes,
 }: {
   taskId?: string;
   session?: Session;
   initialStart?: string;
+  initialDate?: string;
   initialMinutes?: number;
 }) {
   const { snapshot, timeZone, now, closeEditor } = useWorkspace();
   const [selectedTaskId, setSelectedTaskId] = useState(session?.taskId ?? taskId ?? "");
   const task = snapshot.tasks.find((task) => task.id === selectedTaskId);
   const [start, setStart] = useState(
-    initialStart || session ? dateTimeInput(initialStart ?? session!.startAt, timeZone) : "",
+    initialStart || session
+      ? dateTimeInput(initialStart ?? session!.startAt, timeZone)
+      : (initialDate ?? ""),
   );
   const [minutes, setMinutes] = useState(
     String(initialMinutes ?? (session ? minutesBetween(session.startAt, session.endAt) : "")),

@@ -56,6 +56,7 @@ export function EditorHost({ editor }: { editor: Editor }) {
         taskId={editor.taskId}
         session={session}
         initialStart={editor.startAt}
+        initialDate={editor.initialDate}
         initialMinutes={editor.durationMinutes}
       />
     );
@@ -72,7 +73,9 @@ export function EditorHost({ editor }: { editor: Editor }) {
             ? `Journée entière · du ${formatDate(editor.event.startAt, timeZone, "dd/MM/yyyy")} au ${formatDate(new Date(new Date(editor.event.endAt).getTime() - 1).toISOString(), timeZone, "dd/MM/yyyy")}`
             : `Événement · ${formatDate(editor.event.startAt, timeZone, "dd/MM/yyyy HH:mm")} – ${formatDate(editor.event.endAt, timeZone, "dd/MM/yyyy HH:mm")}`}
         </p>
-        <p className="mt-3 text-muted-foreground">Cet événement est en lecture seule. Modifie-le dans le calendrier d’origine.</p>
+        <p className="mt-3 text-muted-foreground">
+          Cet événement est en lecture seule. Modifie-le dans le calendrier d’origine.
+        </p>
       </div>
     );
   if (editor.type === "estimate" && task)

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, type CSSProperties } from "react";
+import type { CSSProperties } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
-import { Clock3, GripVertical, Plus } from "lucide-react";
+import { Clock3, Plus } from "lucide-react";
 import { getTaskMetrics, minutesBetween, zonedInstant, type Task } from "@upnext/contracts";
 import {
   pixelsPerMinute,
@@ -14,47 +14,51 @@ import {
 import { duration, errorMessage, formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
 import { TaskTags } from "./common";
 import { useWorkspace } from "./workspace-context";
 
-export function BacklogTask({ task }: { task: Task }) {
+export function BacklogTask({
+  task,
+  displayedDate,
+  mobile,
+}: {
+  task: Task;
+  displayedDate: string;
+  mobile: boolean;
+}) {
   const { snapshot, now, openEditor } = useWorkspace();
   const metrics = getTaskMetrics(task, snapshot.sessions, snapshot.logs, now);
-  const [chosenMinutes, setChosenMinutes] = useState("");
-  const durationMinutes = snapMinute(
-    chosenMinutes === "" ? metrics.unplannedMinutes : Number(chosenMinutes),
-    15,
-    1440,
-  );
-  const { setNodeRef, listeners, attributes, isDragging } = useDraggable({
+  const durationMinutes = snapMinute(metrics.unplannedMinutes, 15, 1440);
+  const { setNodeRef, setActivatorNodeRef, listeners, attributes, isDragging } = useDraggable({
     id: `task:${task.id}`,
     data: { kind: "task", task, durationMinutes } satisfies CalendarDrag,
+    disabled: mobile,
   });
   return (
-    <div ref={setNodeRef} className={cn("backlog-task", isDragging && "opacity-40")}>
-      <div className="flex items-start gap-2">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          className="drag-handle"
-          {...listeners}
-          {...attributes}
-          aria-label={`Glisser ${task.title} dans le calendrier`}
-        >
-          <GripVertical />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          className="h-auto flex-1 justify-start whitespace-normal p-0 text-left"
-          onClick={() => openEditor({ type: "detail", taskId: task.id })}
-        >
-          <span className="font-semibold">{task.title}</span>
-        </Button>
-      </div>
+    <div
+      ref={setNodeRef}
+      className={cn(
+        "backlog-task work-block",
+        !mobile && "is-draggable",
+        isDragging && "opacity-40",
+      )}
+      onPointerDown={(event) => {
+        if (event.target instanceof Element && event.target.closest("[data-no-drag]")) {
+          return;
+        }
+        listeners?.onPointerDown?.(event);
+      }}
+    >
+      <p
+        ref={mobile ? undefined : setActivatorNodeRef}
+        className="work-title"
+        {...(mobile ? {} : attributes)}
+        onKeyDown={mobile ? undefined : (event) => listeners?.onKeyDown?.(event)}
+        aria-label={mobile ? undefined : `Glisser ${task.title} dans le calendrier`}
+      >
+        {task.title}
+      </p>
       <div className="mt-3">
         <TaskTags task={task} />
       </div>
@@ -62,27 +66,23 @@ export function BacklogTask({ task }: { task: Task }) {
         <Clock3 className="size-3" />
         {duration(metrics.unplannedMinutes)} à placer
       </span>
-      <div className="mt-3 flex items-center gap-2">
-        <Input
-          aria-label={`Durée à placer pour ${task.title}, en minutes`}
-          type="number"
-          min={15}
-          max={1440}
-          step={15}
-          className="h-8 w-20"
-          value={chosenMinutes}
-          placeholder={String(durationMinutes)}
-          onChange={(event) => setChosenMinutes(event.target.value)}
-        />
-        <span className="text-xs text-muted-foreground">min</span>
+      <div className="mt-2 flex justify-end">
         <Button
-          className="ml-auto"
+          data-no-drag
           variant="ghost"
-          size="icon-sm"
+          size={mobile ? "sm" : "icon-sm"}
           aria-label={`Planifier ${task.title}`}
-          onClick={() => openEditor({ type: "session", taskId: task.id, durationMinutes })}
+          onClick={() =>
+            openEditor({
+              type: "session",
+              taskId: task.id,
+              durationMinutes,
+              initialDate: mobile ? displayedDate : undefined,
+            })
+          }
         >
-          <Plus />
+          <Plus data-icon={mobile ? "inline-start" : undefined} />
+          {mobile && "Planifier"}
         </Button>
       </div>
     </div>

@@ -16,6 +16,7 @@ export type Editor =
       taskId?: string;
       sessionId?: string;
       startAt?: string;
+      initialDate?: string;
       durationMinutes?: number;
     }
   | { type: "log"; taskId: string; sessionId?: string; logId?: string }

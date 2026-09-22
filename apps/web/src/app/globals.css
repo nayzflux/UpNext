@@ -625,17 +625,23 @@
 }
 .backlog-task {
   padding: 13px 12px;
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  background: var(--card);
+  border-radius: 6px;
 }
-.drag-handle {
-  flex-shrink: 0;
-  color: var(--muted-foreground);
+.backlog-task.is-draggable {
   cursor: grab;
   touch-action: none;
-  padding: 2px;
-  margin-left: -3px;
+}
+.backlog-task.is-draggable:active {
+  cursor: grabbing;
+}
+.backlog-task .work-title,
+.calendar-block strong {
+  font-weight: 650;
+  line-height: 1.25;
+}
+.backlog-task .work-title {
+  font-size: 12px;
+  cursor: inherit;
 }
 .calendar-surface {
   min-width: 0;
@@ -769,7 +775,9 @@
   text-align: left;
   overflow: hidden;
   color: var(--foreground);
-  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+  transition:
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
 }
 .calendar-block:hover {
   z-index: 10;
@@ -792,8 +800,6 @@
 .calendar-block strong {
   display: block;
   font-size: 10px;
-  font-weight: 650;
-  line-height: 1.25;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

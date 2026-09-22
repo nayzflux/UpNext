@@ -30,8 +30,7 @@ test("modal centré, aperçu à taille réelle, snap et redimensionnement sur la
   await page
     .getByRole("button", { name: "Planifier Séance de deux heures", exact: true })
     .click();
-  await expect(page.getByLabel("Durée, en minutes")).toHaveValue("");
-  await page.getByLabel("Durée, en minutes").fill("120");
+  await expect(page.getByLabel("Durée, en minutes")).toHaveValue("120");
   await setDateTime(page, "Début de la séance", `${date}T10:00`);
   await page.getByRole("button", { name: "Planifier la séance", exact: true }).click();
   await expect(modal).toHaveCount(0);
@@ -93,6 +92,8 @@ test("modal centré, aperçu à taille réelle, snap et redimensionnement sur la
   await mainButton.focus();
   await page.keyboard.press("Space");
   await expect(preview).toBeVisible();
+  // The keyboard sensor installs its key listener on the next event-loop turn.
+  await page.waitForTimeout(50);
   await page.keyboard.press("ArrowDown");
   await expect(preview).toContainText("10:45–13:15");
   await page.keyboard.press("Escape");
@@ -103,10 +104,8 @@ test("modal centré, aperçu à taille réelle, snap et redimensionnement sur la
   await page.getByLabel("Temps estimé, en minutes").fill("180");
   await saveTask(page);
   await page.getByRole("button", { name: "Semaine", exact: true }).click();
-  await page.getByLabel("Durée à placer pour Lecture à répartir, en minutes").fill("120");
-  const source = page.getByRole("button", {
-    name: "Glisser Lecture à répartir dans le calendrier",
-  });
+  const backlogCard = page.locator(".backlog-task").filter({ hasText: "Lecture à répartir" });
+  const source = backlogCard.getByText("à placer");
   const sourceBox = await source.boundingBox();
   const nextDate = addCalendarDays(date, 1);
   const target = page.locator(`[data-calendar-date="${nextDate}"]`);
@@ -118,16 +117,16 @@ test("modal centré, aperçu à taille réelle, snap et redimensionnement sur la
     targetBox!.y + 120 * pixelsPerMinute,
     { steps: 12 },
   );
-  await expect(preview).toContainText("10:00–12:00");
+  await expect(preview).toContainText("10:00–13:00");
   const backlogPreview = await preview.boundingBox();
-  expect(backlogPreview!.height).toBeCloseTo(120 * pixelsPerMinute, 0);
+  expect(backlogPreview!.height).toBeCloseTo(180 * pixelsPerMinute, 0);
   const columnBorder = await target.evaluate((element) =>
     parseFloat(getComputedStyle(element).borderLeftWidth),
   );
   expect(backlogPreview!.width).toBeCloseTo(targetBox!.width - columnBorder - 6, 0);
   await page.mouse.up();
   await expect(modal).toBeVisible();
-  await expect(page.getByLabel("Durée, en minutes")).toHaveValue("120");
+  await expect(page.getByLabel("Durée, en minutes")).toHaveValue("180");
   await expect(page.getByRole("group", { name: "Début de la séance" })).toHaveAttribute(
     "data-value",
     `${nextDate}T10:00`,
@@ -144,6 +143,60 @@ test("modal centré, aperçu à taille réelle, snap et redimensionnement sur la
     0,
   );
   expect(hydrationErrors).toEqual([]);
+});
+
+test("la carte à planifier reste compacte et ouvre le choix de durée avec plus", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 1100 });
+  await signUp(page);
+  await openTaskForm(page, "Tâche à saisir");
+  await saveTask(page);
+
+  const date = addCalendarDays(localDate(new Date(), "Europe/Paris"), 1);
+  await page.goto(`/calendrier?date=${date}`);
+  const card = page.locator(".backlog-task").filter({ hasText: "Tâche à saisir" });
+  await expect(card.getByRole("button", { name: "Tâche à saisir", exact: true })).toHaveCount(
+    0,
+  );
+  await expect(card.getByRole("button", { name: /Glisser Tâche à saisir/ })).toHaveCount(1);
+  await expect(card.getByRole("spinbutton")).toHaveCount(0);
+  await expect(page.getByTestId("calendar-drag-preview")).toHaveCount(0);
+
+  await card.getByRole("button", { name: "Planifier Tâche à saisir" }).click();
+  await expect(page.getByTestId("editor-modal")).toBeVisible();
+  await expect(page.getByLabel("Durée, en minutes")).toHaveValue("60");
+  await expect(page.getByTestId("calendar-drag-preview")).toHaveCount(0);
+});
+
+test("sur mobile, la planification reprend la date affichée sans heure imposée", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await signUp(page);
+  await openTaskForm(page, "Séance mobile");
+  await page.getByLabel("Temps estimé, en minutes").fill("90");
+  await saveTask(page);
+
+  const date = addCalendarDays(localDate(new Date(), "Europe/Paris"), 1);
+  await page.goto(`/calendrier?date=${date}`);
+  const card = page.locator(".backlog-task").filter({ hasText: "Séance mobile" });
+  await expect(
+    card.getByRole("button", { name: "Glisser Séance mobile dans le calendrier" }),
+  ).toHaveCount(0);
+  await card.getByRole("button", { name: "Planifier Séance mobile" }).click();
+  const modal = page.getByTestId("editor-modal");
+  await expect(modal).toBeVisible();
+  await expect(page.getByRole("group", { name: "Début de la séance" })).toHaveAttribute(
+    "data-value",
+    date,
+  );
+  await expect(page.getByLabel("Durée, en minutes")).toHaveValue("90");
+  await page.getByRole("combobox", { name: "Heure de début de la séance" }).click();
+  await page.getByRole("option", { name: "10:00", exact: true }).click();
+  await page.getByRole("button", { name: "Planifier la séance", exact: true }).click();
+  await expect(modal).toHaveCount(0);
+  await expect(page.getByTestId("session-card")).toContainText("Séance mobile");
 });
 
 test("séances courtes (15 min) : lisibilité, compacité et poignée de redimensionnement au survol", async ({
