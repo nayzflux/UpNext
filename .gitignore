@@ -6,6 +6,7 @@ test-results/
 playwright-report/
 .env
 .env.local
+.env.production
 *.tsbuildinfo
 .tools/
 .artifacts/

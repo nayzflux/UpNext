@@ -37,6 +37,23 @@ Cette commande ajoute cinq tâches, quatre séances dont un bilan et une séance
 
 ### Build et exécution de production
 
+Les services sont également prêts à être exécutés avec Docker Compose en production, sans modifier la pile locale de développement. Copier d'abord la configuration de production, remplacer `BETTER_AUTH_SECRET` par une valeur aléatoire d'au moins 32 caractères et choisir un mot de passe PostgreSQL robuste. Si ce mot de passe contient des caractères réservés dans une URL, l'encoder dans `DATABASE_URL_DOCKER`.
+
+```powershell
+Copy-Item .env.production.example .env.production
+docker compose --env-file .env.production -f compose.production.yaml up --build -d --wait
+```
+
+L'application est alors disponible sur <http://localhost:3000>. Seul le frontend est publié sur l'hôte par défaut ; l'API et PostgreSQL restent sur le réseau Docker. Les migrations sont appliquées par le service `migrate` avant le démarrage de l'API. Pour une exposition publique, définir `APP_URL`, `WEB_BIND_ADDRESS` et `WEB_PORT` selon le domaine et le reverse proxy utilisés, et configurer un SMTP externe avec `SMTP_*`.
+
+Pour arrêter la pile sans supprimer les données :
+
+```powershell
+docker compose --env-file .env.production -f compose.production.yaml down
+```
+
+L'exécution hors Docker reste possible :
+
 ```powershell
 bun run build
 bun run --filter @upnext/api start
