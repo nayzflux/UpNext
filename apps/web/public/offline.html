@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#436447" />
+    <meta name="robots" content="noindex" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'self'"
+    />
+    <title>UpNext · Hors connexion</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: system-ui, sans-serif;
+      }
+      * { box-sizing: border-box; }
+      body {
+        min-height: 100vh;
+        min-height: 100dvh;
+        margin: 0;
+        display: grid;
+        place-items: center;
+        padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
+        color: #332d27;
+        background: #fbf8f4;
+      }
+      main { width: min(100%, 420px); text-align: center; }
+      .mark {
+        width: 64px;
+        height: 64px;
+        margin: 0 auto 24px;
+        display: grid;
+        place-items: center;
+        border-radius: 18px;
+        color: #fbf8f4;
+        background: #436447;
+        font-size: 34px;
+        font-weight: 700;
+      }
+      h1 { margin: 0 0 12px; font-size: 28px; }
+      p { margin: 0 0 24px; line-height: 1.6; opacity: 0.75; }
+      a {
+        display: inline-block;
+        min-height: 48px;
+        padding: 13px 20px;
+        border-radius: 10px;
+        color: #fbf8f4;
+        background: #436447;
+        font-weight: 700;
+        text-decoration: none;
+      }
+      @media (prefers-color-scheme: dark) {
+        body { color: #eee7dd; background: #201b15; }
+        a, .mark { color: #201b15; background: #99bd93; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="mark" aria-hidden="true">↗</div>
+      <h1>Tu es hors connexion</h1>
+      <p>
+        UpNext retrouvera ton espace dès que la connexion sera rétablie.
+        Aucune modification n’est enregistrée hors ligne.
+      </p>
+      <a href="/">Réessayer</a>
+    </main>
+  </body>
+</html>

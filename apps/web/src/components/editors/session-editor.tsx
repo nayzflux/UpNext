@@ -161,7 +161,7 @@ export function SessionEditor({
           value={start}
           onChange={setStart}
         />
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field>
             <FieldLabel htmlFor="session-duration">Durée, en minutes</FieldLabel>
             <Input

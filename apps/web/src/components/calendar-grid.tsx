@@ -192,11 +192,13 @@ function SessionBlock({
   firstMinute,
   movingSessionId,
   onDeleteSession,
+  mobile,
 }: {
   block: CalendarBlock;
   firstMinute: number;
   movingSessionId?: string;
   onDeleteSession: (session: Session) => void;
+  mobile: boolean;
 }) {
   const { openEditor, timeZone, now } = useWorkspace();
   const session = block.session!;
@@ -209,7 +211,7 @@ function SessionBlock({
   const { setNodeRef, listeners, attributes } = useDraggable({
     id: `session:${block.id}`,
     data: { kind: "session", session } satisfies CalendarDrag,
-    disabled: !editable,
+    disabled: mobile || !editable,
   });
   const {
     setNodeRef: setResizeRef,
@@ -218,7 +220,7 @@ function SessionBlock({
   } = useDraggable({
     id: `resize:${block.id}`,
     data: { kind: "resize", session } satisfies CalendarDrag,
-    disabled: !editable,
+    disabled: mobile || !editable,
   });
   return (
     <SessionContextMenu session={session} onDelete={onDeleteSession}>
@@ -242,12 +244,14 @@ function SessionBlock({
           type="button"
           variant="ghost"
           className="calendar-block-main"
-          {...listeners}
-          {...attributes}
+          {...(mobile ? {} : listeners)}
+          {...(mobile ? {} : attributes)}
           title={`${block.title} (${startTime}–${endTime} · ${durationText})`}
           aria-label={
             editable
-              ? `${block.title}, ${startTime}. Déplacer ou ouvrir la séance.`
+              ? mobile
+                ? `${block.title}, ${startTime}. Ouvrir la séance.`
+                : `${block.title}, ${startTime}. Déplacer ou ouvrir la séance.`
               : session.status === "planned" || session.status === "expired"
                 ? `${block.title}, ${startTime}. Faire le bilan de la séance.`
                 : `${block.title}, ${startTime}. Ouvrir la tâche.`
@@ -264,7 +268,7 @@ function SessionBlock({
         >
           <BlockText block={block} />
         </Button>
-        {editable && (
+        {editable && !mobile && (
           <Button
             type="button"
             variant="ghost"
@@ -290,6 +294,7 @@ export function DayColumn({
   movingSessionId,
   originBlocks,
   onDeleteSession,
+  mobile,
 }: {
   date: string;
   blocks: CalendarBlock[];
@@ -298,6 +303,7 @@ export function DayColumn({
   movingSessionId?: string;
   originBlocks: CalendarBlock[];
   onDeleteSession: (session: Session) => void;
+  mobile: boolean;
 }) {
   const { timeZone, openEditor } = useWorkspace();
   const { setNodeRef } = useDroppable({ id: date, data: { date } });
@@ -362,6 +368,7 @@ export function DayColumn({
               firstMinute={firstMinute}
               movingSessionId={movingSessionId}
               onDeleteSession={onDeleteSession}
+              mobile={mobile}
             />
           );
         const startTime = formatDate(block.startAt, timeZone, "HH:mm");

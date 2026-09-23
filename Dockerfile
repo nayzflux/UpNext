@@ -53,6 +53,7 @@ RUN addgroup --system upnext && adduser --system --ingroup upnext upnext
 # Next's standalone output retains the monorepo directory structure.
 COPY --from=builder --chown=upnext:upnext /app/apps/web/.next/standalone ./
 COPY --from=builder --chown=upnext:upnext /app/apps/web/.next/static ./apps/web/.next/static
+COPY --from=builder --chown=upnext:upnext /app/apps/web/public ./apps/web/public
 
 USER upnext
 EXPOSE 3000

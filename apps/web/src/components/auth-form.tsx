@@ -238,7 +238,7 @@ export function AuthForm({ mode, token }: { mode: Mode; token?: string }) {
               )}
               <form.Subscribe selector={(state) => state.isSubmitting}>
                 {(pending) => (
-                  <Button type="submit" size="lg" disabled={pending}>
+                  <Button className="auth-submit" type="submit" size="lg" disabled={pending}>
                     {pending && <Spinner data-icon="inline-start" />}
                     {mode === "login"
                       ? "Me connecter"

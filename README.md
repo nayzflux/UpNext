@@ -70,6 +70,8 @@ Appliquer les migrations avant le démarrage. Pour utiliser un SMTP externe, ren
 - **Calendrier** propose les vues jour, semaine et mois. Sur mobile, la vue jour remplace la semaine. Cliquer dans la grille ou sur le bouton de planification ouvre le formulaire. Les séances peuvent être déplacées et redimensionnées ; le formulaire permet les mêmes opérations au clavier, avec une précision à la minute.
 - **Paramètres** gère les disponibilités, le fuseau IANA, le thème, les tags et les calendriers ICS externes.
 
+L’application peut être installée comme PWA depuis le menu du navigateur sur HTTPS. En cas de rechargement sans réseau, une page hors connexion est affichée ; par sécurité, les données du compte et les modifications ne sont jamais mises en cache hors ligne.
+
 ### Calendriers externes
 
 Dans **Paramètres → Calendriers externes**, ajouter une ou plusieurs URL d’abonnement ICS en HTTPS. Les événements sont affichés en lecture seule dans **Calendrier** et **Aujourd’hui**, avec le nom de leur source. Ils comptent comme créneaux occupés pour les séances et les suggestions. Les tâches ne peuvent être liées qu’aux événements créés dans UpNext.

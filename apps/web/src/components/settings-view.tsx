@@ -353,7 +353,7 @@ export function SettingsView() {
         </div>
         <div className="flex flex-col gap-3">
           <p className="font-semibold">{viewer.name}</p>
-          <p className="text-sm text-muted-foreground">{viewer.email}</p>
+          <p className="break-all text-sm text-muted-foreground">{viewer.email}</p>
           <Link
             href="/mot-de-passe-oublie"
             className="text-sm text-primary underline-offset-4 hover:underline"

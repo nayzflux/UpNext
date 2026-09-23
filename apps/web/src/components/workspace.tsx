@@ -61,13 +61,21 @@ export function Workspace({
       syncInFlight.current = true;
       try {
         const sources = await api.calendarSources.syncDue();
-        const current = queryClient.getQueryData<Snapshot>(orpc.dashboard.get.queryOptions().queryKey);
-        if (sources.some((source) => {
-          const previous = current?.calendarSources.find((item) => item.id === source.id);
-          return previous?.succeededAt !== source.succeededAt || previous?.error !== source.error;
-        })) {
+        const current = queryClient.getQueryData<Snapshot>(
+          orpc.dashboard.get.queryOptions().queryKey,
+        );
+        if (
+          sources.some((source) => {
+            const previous = current?.calendarSources.find((item) => item.id === source.id);
+            return (
+              previous?.succeededAt !== source.succeededAt || previous?.error !== source.error
+            );
+          })
+        ) {
           await Promise.all([
-            queryClient.invalidateQueries({ queryKey: orpc.dashboard.get.queryOptions().queryKey }),
+            queryClient.invalidateQueries({
+              queryKey: orpc.dashboard.get.queryOptions().queryKey,
+            }),
             queryClient.invalidateQueries({ queryKey: ["imported-events"] }),
           ]);
         }
@@ -301,6 +309,22 @@ export function Workspace({
             <span>Un peu d’organisation. Beaucoup d’espace pour toi.</span>
             <span>upnext.</span>
           </footer>
+          <nav className="mobile-bottom-nav" aria-label="Navigation mobile">
+            {[
+              ...navigation,
+              { href: "/parametres", label: "Paramètres", icon: Settings2 },
+            ].map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn("mobile-nav-link", pathname === item.href && "active")}
+                aria-current={pathname === item.href ? "page" : undefined}
+              >
+                <item.icon />
+                <span>{item.label}</span>
+              </Link>
+            ))}
+          </nav>
         </div>
       </div>
       {editor && <EditorHost key={JSON.stringify(editor)} editor={editor} />}

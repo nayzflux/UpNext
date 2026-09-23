@@ -311,42 +311,113 @@ export function TasksView() {
       <div className="surface overflow-hidden">
         {data.length ? (
           <>
-            <Table>
-              <TableHeader>
-                {table.getHeaderGroups().map((group) => (
-                  <TableRow key={group.id}>
-                    {group.headers.map((header) => (
-                      <TableHead key={header.id}>
-                        {header.column.getCanSort() ? (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={header.column.getToggleSortingHandler()}
-                          >
-                            {flexRender(header.column.columnDef.header, header.getContext())}
-                            <ArrowDownUp data-icon="inline-end" />
-                          </Button>
-                        ) : (
-                          flexRender(header.column.columnDef.header, header.getContext())
-                        )}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableHeader>
-              <TableBody>
-                {table.getRowModel().rows.map((row) => (
-                  <TableRow key={row.id}>
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell className="py-5" key={cell.id}>
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            <div className="flex items-center justify-between border-t p-4 text-xs text-muted-foreground">
+            <div className="desktop-task-table">
+              <Table>
+                <TableHeader>
+                  {table.getHeaderGroups().map((group) => (
+                    <TableRow key={group.id}>
+                      {group.headers.map((header) => (
+                        <TableHead key={header.id}>
+                          {header.column.getCanSort() ? (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={header.column.getToggleSortingHandler()}
+                            >
+                              {flexRender(header.column.columnDef.header, header.getContext())}
+                              <ArrowDownUp data-icon="inline-end" />
+                            </Button>
+                          ) : (
+                            flexRender(header.column.columnDef.header, header.getContext())
+                          )}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableHeader>
+                <TableBody>
+                  {table.getRowModel().rows.map((row) => (
+                    <TableRow key={row.id}>
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell className="py-5" key={cell.id}>
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            <div className="mobile-task-list">
+              {table.getRowModel().rows.map((row) => {
+                const task = row.original;
+                const metrics = getTaskMetrics(
+                  task,
+                  snapshot.sessions,
+                  snapshot.logs,
+                  new Date(snapshot.serverNow),
+                );
+                const overdue = task.progress < 100 && new Date(task.dueAt) < now;
+
+                return (
+                  <article className="mobile-task-card" key={task.id}>
+                    <div className="mobile-task-card-heading">
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={`Faire le bilan de ${task.title}`}
+                        disabled={task.progress === 100}
+                        onClick={() => openEditor({ type: "log", taskId: task.id })}
+                      >
+                        {task.progress === 100 ? <Check /> : <span className="task-check" />}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="mobile-task-title"
+                        onClick={() => openEditor({ type: "detail", taskId: task.id })}
+                      >
+                        {task.title}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={`Planifier ${task.title}`}
+                        disabled={task.progress === 100}
+                        onClick={() => openEditor({ type: "session", taskId: task.id })}
+                      >
+                        <CalendarClock />
+                      </Button>
+                    </div>
+                    <button
+                      type="button"
+                      className="mobile-task-card-body"
+                      onClick={() => openEditor({ type: "detail", taskId: task.id })}
+                    >
+                      <span className="mobile-task-meta">
+                        <span className={overdue ? "text-destructive" : undefined}>
+                          {overdue ? "En retard · " : "Pour le "}
+                          {formatDate(task.dueAt, timeZone)}
+                        </span>
+                        <PriorityBadge priority={task.priority} />
+                      </span>
+                      <TaskTags task={task} />
+                      <span className="mobile-task-progress">
+                        <span>
+                          {task.progress} % · {duration(metrics.remainingMinutes)} restantes
+                        </span>
+                        <PlanningBadge status={metrics.planning} />
+                      </span>
+                      <Progress
+                        value={task.progress}
+                        aria-label={`Avancement de ${task.title}`}
+                      />
+                    </button>
+                  </article>
+                );
+              })}
+            </div>
+            <div className="task-pagination flex items-center justify-between border-t p-4 text-xs text-muted-foreground">
               <span>
                 Page {table.state.pagination.pageIndex + 1} sur {table.getPageCount()}
               </span>

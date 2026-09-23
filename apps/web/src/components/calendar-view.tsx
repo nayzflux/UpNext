@@ -597,6 +597,7 @@ export function CalendarView() {
                         "month-day",
                         day.slice(0, 7) !== date.slice(0, 7) && "outside-month",
                         day === localDate(now, timeZone) && "is-today",
+                        day === date && "is-selected",
                       )}
                     >
                       <Button
@@ -749,6 +750,7 @@ export function CalendarView() {
                           preview?.kind === "session" ? preview.sessionId : undefined
                         }
                         onDeleteSession={setSessionToDelete}
+                        mobile={mobile}
                       />
                     ))}
                   </div>
