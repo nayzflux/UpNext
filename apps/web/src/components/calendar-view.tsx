@@ -37,6 +37,7 @@ import {
 } from "@upnext/contracts";
 import { api, orpc } from "@/lib/api";
 import { duration, errorMessage, formatDate } from "@/lib/format";
+import { tasksForEvent } from "@/lib/event-links";
 import {
   hourHeight,
   pixelsPerMinute,
@@ -613,6 +614,9 @@ export function CalendarView() {
                         {Number(day.slice(-2))}
                       </Button>
                       {blocks.slice(0, 3).map((block) => {
+                        const linkedCount = block.event
+                          ? tasksForEvent(snapshot.tasks, block.event).length
+                          : 0;
                         const button = (
                           <Button
                             key={block.id}
@@ -635,10 +639,22 @@ export function CalendarView() {
                                     })
                                 : block.event && "sourceId" in block.event
                                   ? openEditor({ type: "importedEvent", event: block.event })
-                                  : openEditor({ type: "event", eventId: block.event!.id })
+                                  : openEditor({
+                                      type: "event",
+                                      eventId: block.event!.id,
+                                      occurrenceIndex: block.event!.occurrenceIndex,
+                                    })
                             }
                           >
                             {block.title}
+                            {linkedCount > 0 && (
+                              <span
+                                className="ml-1 text-xs font-semibold"
+                                aria-label={`${linkedCount} tâches associées`}
+                              >
+                                · {linkedCount} tâche{linkedCount > 1 ? "s" : ""}
+                              </span>
+                            )}
                           </Button>
                         );
 

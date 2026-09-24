@@ -21,16 +21,23 @@ import {
 import type { z } from "zod";
 import { db, type Connection } from "./db";
 import {
+  calendarSources,
   events,
   preferences,
   studySessions,
   tags,
   tasks,
+  taskEventLinks,
   taskTags,
   workLogs,
 } from "./db/schema";
 import { eventToWire, getSnapshot, logToWire, sessionToWire, taskToWire } from "./data";
 import { getImportedEvents } from "./calendar-sources";
+import {
+  resolveTaskEventLink,
+  syncImportedEventTasks,
+  syncLocalEventTasks,
+} from "./task-event-links";
 
 function notFound() {
   return new ORPCError("NOT_FOUND", {
@@ -87,21 +94,15 @@ export async function saveTask(
         .where(and(eq(tags.userId, userId), inArray(tags.id, tagIds)));
       if (ownedTags.length !== tagIds.length) throw notFound();
     }
-    if (input.eventId) {
-      const [event] = await connection
-        .select()
-        .from(events)
-        .where(and(eq(events.id, input.eventId), eq(events.userId, userId)));
-      if (!event) throw notFound();
-    }
+    const linkedDate = input.eventLink
+      ? await resolveTaskEventLink(connection, userId, input.eventLink)
+      : { dueAt: input.dueAt, dateOnly: input.dateOnly };
     const values = {
       title: input.title,
       notes: input.notes,
       priority: input.priority,
-      dueAt: input.dueAt,
-      dateOnly: input.dateOnly,
+      ...linkedDate,
       estimatedMinutes: input.estimatedMinutes,
-      eventId: input.eventId,
     };
     const [saved] = input.id
       ? await connection
@@ -122,7 +123,24 @@ export async function saveTask(
         .insert(taskTags)
         .values(tagIds.map((tagId) => ({ taskId: saved.id, tagId, userId })));
     }
-    return taskToWire(saved, tagIds);
+    await connection.delete(taskEventLinks).where(eq(taskEventLinks.taskId, saved.id));
+    if (input.eventLink) {
+      await connection.insert(taskEventLinks).values(
+        input.eventLink.type === "local"
+          ? {
+              taskId: saved.id,
+              eventId: input.eventLink.eventId,
+              occurrenceIndex: input.eventLink.occurrenceIndex,
+            }
+          : {
+              taskId: saved.id,
+              sourceId: input.eventLink.sourceId,
+              externalUid: input.eventLink.uid,
+              externalRecurrenceId: input.eventLink.recurrenceId,
+            },
+      );
+    }
+    return taskToWire(saved, tagIds, input.eventLink);
   });
 }
 
@@ -516,6 +534,7 @@ export async function saveEvent(userId: string, input: z.infer<typeof eventInput
           .insert(events)
           .values({ ...values, userId })
           .returning();
+    await syncLocalEventTasks(connection, saved);
     return eventToWire(saved);
   });
 }
@@ -537,6 +556,13 @@ export async function savePreferences(userId: string, input: Preferences) {
       .insert(preferences)
       .values({ ...input, userId })
       .onConflictDoUpdate({ target: preferences.userId, set: input });
+    const sources = await connection
+      .select()
+      .from(calendarSources)
+      .where(eq(calendarSources.userId, userId));
+    for (const source of sources) {
+      await syncImportedEventTasks(connection, source, input.timeZone);
+    }
     return input;
   });
 }

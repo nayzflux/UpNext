@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { CalendarEvent } from "@upnext/contracts";
+import { localEventOccurrence, type CalendarEvent } from "@upnext/contracts";
 import { api } from "@/lib/api";
 import { dateTimeInput, errorMessage, inputToInstant } from "@/lib/format";
 import { useAction, useWorkspace } from "../workspace-context";
@@ -12,13 +12,16 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Spinner } from "@/components/ui/spinner";
 import { DatePicker, DateTimeField, FormError } from "./fields";
 import { ConfirmAction } from "../common";
+import { EventTasks } from "./event-tasks";
 
 export function EventEditor({
   event,
   initialStart,
+  occurrenceIndex = 0,
 }: {
   event?: CalendarEvent;
   initialStart?: string;
+  occurrenceIndex?: number;
 }) {
   const { timeZone: accountZone, closeEditor } = useWorkspace();
   const timeZone = event?.timeZone ?? accountZone;
@@ -42,6 +45,7 @@ export function EventEditor({
   const [allowOverlap, setAllowOverlap] = useState(false);
   const [validationError, setValidationError] = useState("");
   const action = useAction();
+  const occurrence = event ? localEventOccurrence(event, occurrenceIndex) : null;
 
   async function save(formEvent: React.FormEvent) {
     formEvent.preventDefault();
@@ -118,6 +122,7 @@ export function EventEditor({
         </Field>
         <FormError message={validationError || action.error} />
       </FieldGroup>
+      {occurrence && <EventTasks event={occurrence} />}
       <div className="editor-footer">
         {event ? (
           <ConfirmAction

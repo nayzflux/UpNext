@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState } from "react";
-import type { ImportedEvent } from "@upnext/contracts";
+import type { EventOccurrence, ImportedEvent } from "@upnext/contracts";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Snapshot } from "@upnext/contracts";
 import { orpc } from "@/lib/api";
@@ -9,7 +9,7 @@ import { errorMessage } from "@/lib/format";
 import { toast } from "@/components/ui/toast";
 
 export type Editor =
-  | { type: "task"; taskId?: string }
+  | { type: "task"; taskId?: string; initialEvent?: EventOccurrence | ImportedEvent }
   | { type: "detail"; taskId: string }
   | {
       type: "session";
@@ -20,7 +20,7 @@ export type Editor =
       durationMinutes?: number;
     }
   | { type: "log"; taskId: string; sessionId?: string; logId?: string }
-  | { type: "event"; eventId?: string; startAt?: string }
+  | { type: "event"; eventId?: string; startAt?: string; occurrenceIndex?: number }
   | { type: "importedEvent"; event: ImportedEvent }
   | { type: "estimate"; taskId: string; minutes: number };
 

@@ -2,7 +2,7 @@ import { lookup } from "node:dns/promises";
 import type { LookupAddress } from "node:dns";
 import { request } from "node:https";
 import { BlockList, isIP, type LookupFunction } from "node:net";
-import { and, eq, isNull, lt, or } from "drizzle-orm";
+import { and, eq, isNull, lt, or, sql } from "drizzle-orm";
 import { ORPCError } from "@orpc/server";
 import {
   calendarSourceSchema,
@@ -12,6 +12,7 @@ import {
 import { db, type Connection } from "./db";
 import { calendarSources, preferences } from "./db/schema";
 import { expandImported, parseCalendar } from "./ical";
+import { syncImportedEventTasks } from "./task-event-links";
 
 const hour = 3600000;
 const maxBytes = 2 * 1024 * 1024;
@@ -172,10 +173,21 @@ export async function syncCalendarSource(userId: string, id: string, force = fal
     const result = await download(source.url, source.etag, source.lastModified);
     if (result.status === 304 && !source.content) throw new Error("Le flux ICS n’a pas encore été importé.");
     if (result.status === 200) parseCalendar(result.content ?? "");
-    await db.update(calendarSources).set({
-      ...(result.status === 200 ? { content: result.content, etag: result.etag, lastModified: result.lastModified } : {}),
-      succeededAt: new Date().toISOString(), syncingUntil: null, error: null,
-    }).where(and(eq(calendarSources.id, id), eq(calendarSources.userId, userId), eq(calendarSources.attemptedAt, now.toISOString())));
+    await db.transaction(async (connection) => {
+      await connection.execute(sql`select pg_advisory_xact_lock(hashtextextended(${userId}, 0))`);
+      const [updated] = await connection.update(calendarSources).set({
+        ...(result.status === 200 ? { content: result.content, etag: result.etag, lastModified: result.lastModified } : {}),
+        succeededAt: new Date().toISOString(), syncingUntil: null, error: null,
+      }).where(and(eq(calendarSources.id, id), eq(calendarSources.userId, userId), eq(calendarSources.attemptedAt, now.toISOString()))).returning();
+      if (updated && result.status === 200) {
+        const [settings] = await connection.select().from(preferences)
+          .where(eq(preferences.userId, userId));
+        await syncImportedEventTasks(
+          connection, { id: updated.id, name: updated.name, content: updated.content },
+          settings?.timeZone ?? "Europe/Paris",
+        );
+      }
+    });
   } catch (error) {
     await db.update(calendarSources).set({
       syncingUntil: null,

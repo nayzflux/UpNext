@@ -69,7 +69,7 @@ async function seed() {
         dateOnly: true,
         estimatedMinutes: example.estimate,
         tagIds: [],
-        eventId: null,
+        eventLink: null,
       }),
     );
   }

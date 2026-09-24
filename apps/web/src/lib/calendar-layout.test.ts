@@ -19,7 +19,7 @@ const task: Task = {
   dueAt: "2026-09-23T21:59:00Z",
   dateOnly: true,
   tagIds: [],
-  eventId: null,
+  eventLink: null,
   revision: 0,
   createdAt: "2026-09-20T10:00:00Z",
 };

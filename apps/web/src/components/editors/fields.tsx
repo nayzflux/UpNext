@@ -58,12 +58,14 @@ export function DatePicker({
   id,
   label,
   allowClear = true,
+  disabled = false,
 }: {
   value: string;
   onChange: (date: string) => void;
   id: string;
   label?: string;
   allowClear?: boolean;
+  disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -76,6 +78,7 @@ export function DatePicker({
             variant="outline"
             className="w-full justify-start"
             aria-label={label}
+            disabled={disabled}
           />
         }
       >
@@ -122,12 +125,14 @@ export function TimePicker({
   id,
   label,
   allowClear = true,
+  disabled = false,
 }: {
   value: string;
   onChange: (time: string) => void;
   id: string;
   label: string;
   allowClear?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <SelectControl
@@ -138,6 +143,7 @@ export function TimePicker({
       label={label}
       placeholder="Choisir une heure"
       className="w-full"
+      disabled={disabled}
     />
   );
 }

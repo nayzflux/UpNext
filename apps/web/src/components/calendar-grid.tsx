@@ -18,6 +18,7 @@ import {
   type CalendarDrag,
 } from "@/lib/calendar-layout";
 import { duration, errorMessage, formatDate } from "@/lib/format";
+import { tasksForEvent } from "@/lib/event-links";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
@@ -157,15 +158,26 @@ function blockStyle(block: CalendarBlock, firstMinute: number): CSSProperties {
 }
 
 function BlockText({ block }: { block: CalendarBlock }) {
-  const { timeZone } = useWorkspace();
+  const { timeZone, snapshot } = useWorkspace();
   const durationMinutes = block.end - block.start;
   const startTime = formatDate(block.startAt, timeZone, "HH:mm");
   const endTime = formatDate(block.endAt, timeZone, "HH:mm");
   const durationText = duration(minutesBetween(block.startAt, block.endAt));
+  const linkedCount = block.event ? tasksForEvent(snapshot.tasks, block.event).length : 0;
 
   return (
     <>
-      <strong>{block.title}</strong>
+      <strong>
+        {block.title}
+        {block.event && linkedCount > 0 && durationMinutes < 30
+          ? ` · ${linkedCount} tâche${linkedCount > 1 ? "s" : ""}`
+          : ""}
+      </strong>
+      {linkedCount > 0 && durationMinutes >= 30 && (
+        <span className="text-xs font-semibold">
+          {linkedCount} tâche{linkedCount > 1 ? "s" : ""} associée{linkedCount > 1 ? "s" : ""}
+        </span>
+      )}
       {block.event && "sourceId" in block.event && durationMinutes >= 30 && (
         <span>
           {block.event.sourceName}
@@ -390,7 +402,11 @@ export function DayColumn({
             onClick={() =>
               block.event && "sourceId" in block.event
                 ? openEditor({ type: "importedEvent", event: block.event })
-                : openEditor({ type: "event", eventId: block.event!.id })
+                : openEditor({
+                    type: "event",
+                    eventId: block.event!.id,
+                    occurrenceIndex: block.event!.occurrenceIndex,
+                  })
             }
           >
             <BlockText block={block} />

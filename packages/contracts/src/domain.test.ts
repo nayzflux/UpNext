@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   defaultSessionPercent,
   expandEvents,
+  localEventOccurrence,
   getTaskMetrics,
   localTime,
   normalizeTagName,
@@ -63,7 +64,7 @@ const task: Task = {
   dateOnly: true,
   estimatedMinutes: 240,
   tagIds: [],
-  eventId: null,
+  eventLink: null,
   progress: 25,
   revision: 0,
   createdAt: now.toISOString(),
@@ -246,6 +247,18 @@ describe("tâches, tags et avancement", () => {
 });
 
 describe("fuseaux et répétitions", () => {
+  it("garde l’indice d’une occurrence quand une série change de jour", () => {
+    const original = weekly("2026-10-18T16:00:00Z", "2026-10-18T17:00:00Z");
+    const linked = localEventOccurrence(original, 2)!;
+    expect(linked.occurrenceIndex).toBe(2);
+    expect(expandEvents([original], linked.startAt, linked.endAt)[0].occurrenceIndex).toBe(2);
+    const moved = {
+      ...original,
+      startAt: "2026-10-19T17:00:00Z",
+      endAt: "2026-10-19T18:00:00Z",
+    };
+    expect(localEventOccurrence(moved, 2)?.startAt).toBe("2026-11-02T18:00:00.000Z");
+  });
   it("conserve l’horaire local lors des passages à l’heure d’été et d’hiver", () => {
     const spring = expandEvents(
       [weekly("2026-03-22T17:00:00Z", "2026-03-22T18:00:00Z")],
@@ -334,6 +347,8 @@ describe("suggestions déterministes", () => {
     const blocked = {
       id: "source:course:2026-03-24",
       occurrenceId: "source:course:2026-03-24",
+      uid: "course",
+      recurrenceId: "2026-03-24",
       sourceId: crypto.randomUUID(),
       sourceName: "Cours",
       title: "Examen",

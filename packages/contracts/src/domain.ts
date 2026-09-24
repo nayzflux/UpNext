@@ -141,7 +141,41 @@ export function zonedInstant(date: string, time: string, timeZone: string) {
   return result.toISOString();
 }
 
-export type EventOccurrence = CalendarEvent & { occurrenceId: string };
+export type EventOccurrence = CalendarEvent & {
+  occurrenceId: string;
+  occurrenceIndex: number;
+};
+
+export function localEventOccurrence(
+  event: CalendarEvent,
+  occurrenceIndex: number,
+): EventOccurrence | null {
+  if (!Number.isInteger(occurrenceIndex) || occurrenceIndex < 0) return null;
+  if (!event.weekly) {
+    return occurrenceIndex === 0
+      ? { ...event, occurrenceId: event.id, occurrenceIndex }
+      : null;
+  }
+  const anchorDate = localDate(event.startAt, event.timeZone);
+  const date = addCalendarDays(anchorDate, occurrenceIndex * 7);
+  if (event.repeatUntil && date > event.repeatUntil) return null;
+  const spansMidnight = localDate(event.endAt, event.timeZone) > anchorDate;
+  try {
+    return {
+      ...event,
+      startAt: zonedInstant(date, localTime(event.startAt, event.timeZone), event.timeZone),
+      endAt: zonedInstant(
+        spansMidnight ? addCalendarDays(date, 1) : date,
+        localTime(event.endAt, event.timeZone),
+        event.timeZone,
+      ),
+      occurrenceId: `${event.id}:${date}`,
+      occurrenceIndex,
+    };
+  } catch {
+    return null;
+  }
+}
 
 export function expandEvents(
   events: CalendarEvent[],
@@ -154,14 +188,12 @@ export function expandEvents(
   for (const event of events) {
     if (!event.weekly) {
       if (overlaps(event, range)) {
-        occurrences.push({ ...event, occurrenceId: event.id });
+        occurrences.push({ ...event, occurrenceId: event.id, occurrenceIndex: 0 });
       }
       continue;
     }
 
     const anchorDate = localDate(event.startAt, event.timeZone);
-    const endDate = localDate(event.endAt, event.timeZone);
-    const spansMidnight = endDate > anchorDate;
     let date = addCalendarDays(localDate(rangeStart, event.timeZone), -1);
     const lastDate = localDate(rangeEnd, event.timeZone);
 
@@ -171,28 +203,12 @@ export function expandEvents(
         weekdayOfDate(date) === weekdayOfDate(anchorDate) &&
         (!event.repeatUntil || date <= event.repeatUntil)
       ) {
-        try {
-          const startAt = zonedInstant(
-            date,
-            localTime(event.startAt, event.timeZone),
-            event.timeZone,
-          );
-          const endAt = zonedInstant(
-            spansMidnight ? addCalendarDays(date, 1) : date,
-            localTime(event.endAt, event.timeZone),
-            event.timeZone,
-          );
-          if (overlaps({ startAt, endAt }, range)) {
-            occurrences.push({
-              ...event,
-              startAt,
-              endAt,
-              occurrenceId: `${event.id}:${date}`,
-            });
-          }
-        } catch {
-          // A weekly occurrence in the skipped DST hour is omitted, never silently shifted.
-        }
+        const occurrenceIndex = Math.round(
+          (Date.parse(`${date}T12:00:00Z`) - Date.parse(`${anchorDate}T12:00:00Z`)) /
+            (7 * 86400000),
+        );
+        const occurrence = localEventOccurrence(event, occurrenceIndex);
+        if (occurrence && overlaps(occurrence, range)) occurrences.push(occurrence);
       }
       date = addCalendarDays(date, 1);
     }

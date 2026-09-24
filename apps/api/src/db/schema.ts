@@ -164,7 +164,6 @@ export const tasks = pgTable(
     dateOnly: boolean("date_only").notNull().default(true),
     estimatedMinutes: integer("estimated_minutes").notNull(),
     progress: doublePrecision("progress").notNull().default(0),
-    eventId: uuid("event_id").references(() => events.id, { onDelete: "set null" }),
     revision: integer("revision").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
       .notNull()
@@ -175,6 +174,32 @@ export const tasks = pgTable(
     unique("tasks_id_user_unique").on(table.id, table.userId),
     check("task_progress_range", sql`${table.progress} >= 0 AND ${table.progress} <= 100`),
     check("task_estimate_positive", sql`${table.estimatedMinutes} > 0`),
+  ],
+);
+
+export const taskEventLinks = pgTable(
+  "task_event_links",
+  {
+    taskId: uuid("task_id")
+      .primaryKey()
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    eventId: uuid("event_id").references(() => events.id, { onDelete: "cascade" }),
+    occurrenceIndex: integer("occurrence_index"),
+    sourceId: uuid("source_id").references(() => calendarSources.id, { onDelete: "cascade" }),
+    externalUid: text("external_uid"),
+    externalRecurrenceId: text("external_recurrence_id"),
+  },
+  (table) => [
+    index("task_event_links_event_idx").on(table.eventId),
+    index("task_event_links_source_idx").on(table.sourceId),
+    check(
+      "task_event_links_one_target",
+      sql`(
+      (${table.eventId} IS NOT NULL AND ${table.occurrenceIndex} IS NOT NULL AND ${table.occurrenceIndex} >= 0 AND ${table.sourceId} IS NULL AND ${table.externalUid} IS NULL AND ${table.externalRecurrenceId} IS NULL)
+      OR
+      (${table.eventId} IS NULL AND ${table.occurrenceIndex} IS NULL AND ${table.sourceId} IS NOT NULL AND ${table.externalUid} IS NOT NULL AND ${table.externalUid} <> '')
+    )`,
+    ),
   ],
 );
 

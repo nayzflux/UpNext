@@ -18,7 +18,12 @@ import {
   saveTag,
   saveTask,
 } from "./mutations";
-import { getTaskMetrics, taskFieldsSchema, type Task } from "@upnext/contracts";
+import {
+  getTaskMetrics,
+  localEventOccurrence,
+  taskFieldsSchema,
+  type Task,
+} from "@upnext/contracts";
 
 const alice = crypto.randomUUID();
 const bob = crypto.randomUUID();
@@ -56,6 +61,70 @@ afterAll(async () => {
 });
 
 describe("PostgreSQL : propriété, contraintes et transactions", () => {
+  it("associe plusieurs tâches à une occurrence, suit son déplacement et garde leur date après suppression", async () => {
+    const startAt = future(65);
+    const endAt = new Date(new Date(startAt).getTime() + 3600000).toISOString();
+    const event = await saveEvent(alice, {
+      title: "Examen récurrent",
+      startAt,
+      endAt,
+      weekly: true,
+      repeatUntil: null,
+      timeZone: "Europe/Paris",
+      allowOverlap: true,
+    });
+    const link = { type: "local" as const, eventId: event.id, occurrenceIndex: 2 };
+    const expected = localEventOccurrence(event, 2)!.startAt;
+    const first = await saveTask(alice, { ...taskInput("Réviser"), eventLink: link });
+    const second = await saveTask(alice, {
+      ...taskInput("Préparer les notes"),
+      eventLink: link,
+    });
+    expect(first.dueAt).toBe(expected);
+    expect(second.dueAt).toBe(expected);
+    const manualDate = await saveTask(alice, {
+      ...first,
+      dueAt: future(1),
+      dateOnly: true,
+    });
+    expect(manualDate.dueAt).toBe(expected);
+    expect(manualDate.dateOnly).toBe(false);
+    expect(
+      (await getSnapshot(alice)).tasks.filter(
+        (task) => task.eventLink?.type === "local" && task.eventLink.eventId === event.id,
+      ),
+    ).toHaveLength(2);
+
+    const shiftedStart = new Date(new Date(startAt).getTime() + 25 * 3600000).toISOString();
+    const shifted = await saveEvent(alice, {
+      ...event,
+      startAt: shiftedStart,
+      endAt: new Date(new Date(shiftedStart).getTime() + 3600000).toISOString(),
+      allowOverlap: true,
+    });
+    const movedDate = localEventOccurrence(shifted, 2)!.startAt;
+    const updated = (await getSnapshot(alice)).tasks.filter((task) =>
+      [first.id, second.id].includes(task.id),
+    );
+    expect(updated.map((task) => task.dueAt)).toEqual([movedDate, movedDate]);
+    const firstUpdated = updated.find((task) => task.id === first.id)!;
+    await saveLog(alice, { ...logInput(firstUpdated), progressAfter: 100 });
+    expect(
+      (await getSnapshot(alice)).tasks.find((task) => task.id === first.id),
+    ).toMatchObject({
+      progress: 100,
+      eventLink: link,
+    });
+
+    await deleteEvent(alice, event.id);
+    const retained = (await getSnapshot(alice)).tasks.filter((task) =>
+      [first.id, second.id].includes(task.id),
+    );
+    expect(retained.map((task) => task.dueAt)).toEqual([movedDate, movedDate]);
+    expect(retained.every((task) => task.eventLink === null)).toBe(true);
+    await deleteTask(alice, first.id);
+    await deleteTask(alice, second.id);
+  });
   it("démarre sans tag ni disponibilité", async () => {
     expect(await getSnapshot(alice)).toMatchObject({
       tags: [],
@@ -106,7 +175,12 @@ describe("PostgreSQL : propriété, contraintes et transactions", () => {
     await expect(saveTask(bob, { ...taskInput(), tagIds: [tag.id] })).rejects.toMatchObject({
       code: "NOT_FOUND",
     });
-    await expect(saveTask(bob, { ...taskInput(), eventId: event.id })).rejects.toMatchObject({
+    await expect(
+      saveTask(bob, {
+        ...taskInput(),
+        eventLink: { type: "local", eventId: event.id, occurrenceIndex: 0 },
+      }),
+    ).rejects.toMatchObject({
       code: "NOT_FOUND",
     });
     await expect(saveTask(bob, task)).rejects.toMatchObject({ code: "NOT_FOUND" });

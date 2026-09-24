@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { expandImported, parseCalendar } from "./ical";
+import { expandImported, parseCalendar, resolveImportedOccurrence } from "./ical";
 
 const source = (content: string) => ({
   id: "4c838bd6-3e88-4254-b27f-ea494d8bc7ee",
@@ -9,6 +9,27 @@ const source = (content: string) => ({
 const event = (body: string) => `BEGIN:VEVENT\r\nDTSTAMP:20260101T000000Z\r\n${body}END:VEVENT\r\n`;
 
 describe("import ICS", () => {
+  it("garde l’UID d’un événement ponctuel déplacé et retrouve sa nouvelle heure", () => {
+    const first = source(event("UID:exam\r\nSUMMARY:Examen\r\nDTSTART:20261001T080000Z\r\nDTEND:20261001T100000Z\r\n"));
+    const moved = source(event("UID:exam\r\nSUMMARY:Examen\r\nDTSTART:20261002T110000Z\r\nDTEND:20261002T130000Z\r\n"));
+    const initial = expandImported(first, "2026-10-01T00:00:00Z", "2026-10-03T00:00:00Z", "Europe/Paris")[0];
+    const updated = expandImported(moved, "2026-10-01T00:00:00Z", "2026-10-03T00:00:00Z", "Europe/Paris")[0];
+    expect(initial.id).toBe(updated.id);
+    expect(updated).toMatchObject({ uid: "exam", recurrenceId: null });
+    expect(resolveImportedOccurrence(moved, "exam", null, "Europe/Paris")?.startAt)
+      .toBe("2026-10-02T11:00:00.000Z");
+  });
+
+  it("suit une exception récurrente déplacée sans afficher son ancien créneau", () => {
+    const calendar = source(
+      event("UID:course\r\nSUMMARY:Cours\r\nDTSTART:20261001T080000Z\r\nDTEND:20261001T090000Z\r\nRRULE:FREQ=DAILY;COUNT=3\r\n") +
+      event("UID:course\r\nRECURRENCE-ID:20261002T080000Z\r\nSUMMARY:Cours déplacé\r\nDTSTART:20261005T110000Z\r\nDTEND:20261005T120000Z\r\n"),
+    );
+    const originalDay = expandImported(calendar, "2026-10-02T00:00:00Z", "2026-10-03T00:00:00Z", "Europe/Paris");
+    expect(originalDay).toEqual([]);
+    const moved = resolveImportedOccurrence(calendar, "course", "2026-10-02T08:00:00Z", "Europe/Paris");
+    expect(moved?.startAt).toBe("2026-10-05T11:00:00.000Z");
+  });
   it("lit les événements ponctuels et les journées entières sur plusieurs jours", () => {
     const calendar = source(
       event("UID:one\r\nSUMMARY:Examen\r\nDTSTART:20261001T080000Z\r\nDTEND:20261001T100000Z\r\n") +

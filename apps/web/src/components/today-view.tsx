@@ -23,6 +23,7 @@ import {
 import { api } from "@/lib/api";
 import { dayBlocks, type CalendarBlock } from "@/lib/calendar-layout";
 import { duration, formatDate } from "@/lib/format";
+import { tasksForEvent } from "@/lib/event-links";
 import {
   groupDueTasks,
   remainingTodayBlocks,
@@ -121,7 +122,11 @@ export function TodayView() {
       return;
     }
     if (block.event) {
-      openEditor({ type: "event", eventId: block.event.id });
+      openEditor({
+        type: "event",
+        eventId: block.event.id,
+        occurrenceIndex: block.event.occurrenceIndex,
+      });
     }
   }
 
@@ -379,6 +384,12 @@ export function TodayView() {
                     onClick={() => openBlock(block)}
                   >
                     <span className="truncate font-semibold">{block.title}</span>
+                    {block.event && tasksForEvent(snapshot.tasks, block.event).length > 0 && (
+                      <span className="text-xs font-semibold">
+                        {tasksForEvent(snapshot.tasks, block.event).length} tâche(s)
+                        associée(s)
+                      </span>
+                    )}
                     {block.event && "sourceId" in block.event && (
                       <span className="truncate text-xs text-muted-foreground">
                         {block.event.sourceName}
@@ -423,6 +434,9 @@ export function TodayView() {
                   {remaining.timed.map((block) => {
                     const startTime = formatDate(block.startAt, timeZone, "HH:mm");
                     const endTime = formatDate(block.endAt, timeZone, "HH:mm");
+                    const linkedCount = block.event
+                      ? tasksForEvent(snapshot.tasks, block.event).length
+                      : 0;
                     return (
                       <Button
                         type="button"
@@ -446,7 +460,18 @@ export function TodayView() {
                         title={`${block.title} · ${startTime}–${endTime}`}
                         onClick={() => openBlock(block)}
                       >
-                        <strong>{block.title}</strong>
+                        <strong>
+                          {block.title}
+                          {linkedCount > 0 && block.end - block.visibleStart < 45
+                            ? ` · ${linkedCount} tâche${linkedCount > 1 ? "s" : ""}`
+                            : ""}
+                        </strong>
+                        {linkedCount > 0 && block.end - block.visibleStart >= 45 && (
+                          <span className="text-xs font-semibold">
+                            {linkedCount} tâche{linkedCount > 1 ? "s" : ""} associée
+                            {linkedCount > 1 ? "s" : ""}
+                          </span>
+                        )}
                         <span>
                           {startTime}–{endTime}
                           {block.event && "sourceId" in block.event

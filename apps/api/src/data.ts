@@ -1,4 +1,4 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import {
   eventSchema,
   preferencesSchema,
@@ -8,6 +8,7 @@ import {
   taskSchema,
   workLogSchema,
   type Snapshot,
+  type EventLink,
 } from "@upnext/contracts";
 import { db, type Connection } from "./db";
 import { sourceToWire } from "./calendar-sources";
@@ -18,13 +19,35 @@ import {
   studySessions,
   tags,
   tasks,
+  taskEventLinks,
   taskTags,
   workLogs,
 } from "./db/schema";
 
-export function taskToWire(row: typeof tasks.$inferSelect, tagIds: string[]) {
+export function linkToWire(row?: typeof taskEventLinks.$inferSelect): EventLink | null {
+  if (!row) return null;
+  if (row.eventId !== null && row.occurrenceIndex !== null) {
+    return { type: "local", eventId: row.eventId, occurrenceIndex: row.occurrenceIndex };
+  }
+  if (row.sourceId !== null && row.externalUid !== null) {
+    return {
+      type: "imported",
+      sourceId: row.sourceId,
+      uid: row.externalUid,
+      recurrenceId: row.externalRecurrenceId,
+    };
+  }
+  return null;
+}
+
+export function taskToWire(
+  row: typeof tasks.$inferSelect,
+  tagIds: string[],
+  eventLink: EventLink | null = null,
+) {
   return taskSchema.parse({
     ...row,
+    eventLink,
     dueAt: new Date(row.dueAt).toISOString(),
     createdAt: new Date(row.createdAt).toISOString(),
     tagIds,
@@ -68,6 +91,17 @@ export async function getSnapshot(
     .from(tags)
     .where(eq(tags.userId, userId));
   const links = await connection.select().from(taskTags).where(eq(taskTags.userId, userId));
+  const eventLinks = taskRows.length
+    ? await connection
+        .select()
+        .from(taskEventLinks)
+        .where(
+          inArray(
+            taskEventLinks.taskId,
+            taskRows.map((task) => task.id),
+          ),
+        )
+    : [];
   const sessionRows = await connection
     .select()
     .from(studySessions)
@@ -95,6 +129,7 @@ export async function getSnapshot(
       taskToWire(
         task,
         links.filter((link) => link.taskId === task.id).map((link) => link.tagId),
+        linkToWire(eventLinks.find((link) => link.taskId === task.id)),
       ),
     ),
     tags: tagRows.sort((a, b) => a.name.localeCompare(b.name, "fr")),

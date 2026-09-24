@@ -14,6 +14,7 @@ import { EstimateEditor, LogEditor } from "./log-editor";
 import { EventEditor } from "./event-editor";
 import { formatDate } from "@/lib/format";
 import { TaskDetail } from "./task-detail";
+import { EventTasks } from "./event-tasks";
 
 export function EditorHost({ editor }: { editor: Editor }) {
   const { snapshot, closeEditor, timeZone } = useWorkspace();
@@ -48,7 +49,8 @@ export function EditorHost({ editor }: { editor: Editor }) {
     estimate: "Une estimation peut évoluer avec ton travail.",
   };
   let content: React.ReactNode;
-  if (editor.type === "task") content = <TaskEditor task={task} />;
+  if (editor.type === "task")
+    content = <TaskEditor task={task} initialEvent={editor.initialEvent} />;
   if (editor.type === "detail" && task) content = <TaskDetail task={task} />;
   if (editor.type === "session")
     content = (
@@ -63,7 +65,13 @@ export function EditorHost({ editor }: { editor: Editor }) {
   if (editor.type === "log" && task)
     content = <LogEditor task={task} session={session} log={log} />;
   if (editor.type === "event")
-    content = <EventEditor event={event} initialStart={editor.startAt} />;
+    content = (
+      <EventEditor
+        event={event}
+        initialStart={editor.startAt}
+        occurrenceIndex={editor.occurrenceIndex}
+      />
+    );
   if (editor.type === "importedEvent")
     content = (
       <div className="p-6 pt-2 text-sm">
@@ -76,6 +84,9 @@ export function EditorHost({ editor }: { editor: Editor }) {
         <p className="mt-3 text-muted-foreground">
           Cet événement est en lecture seule. Modifie-le dans le calendrier d’origine.
         </p>
+        <div className="mt-5">
+          <EventTasks event={editor.event} />
+        </div>
       </div>
     );
   if (editor.type === "estimate" && task)

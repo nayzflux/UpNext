@@ -18,6 +18,20 @@ export const tagNameSchema = z
   .transform((name) => name.trim().replace(/\s+/g, " "))
   .pipe(z.string().min(1).max(50));
 
+export const eventLinkSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("local"),
+    eventId: idSchema,
+    occurrenceIndex: z.number().int().min(0),
+  }),
+  z.object({
+    type: z.literal("imported"),
+    sourceId: idSchema,
+    uid: z.string().min(1),
+    recurrenceId: z.string().nullable(),
+  }),
+]);
+
 export const taskFieldsSchema = z.object({
   title: z.string().trim().min(1, "Ajoute un titre.").max(200),
   notes: z.string().max(10000).default(""),
@@ -26,7 +40,7 @@ export const taskFieldsSchema = z.object({
   dateOnly: z.boolean().default(true),
   estimatedMinutes: z.number().int().min(5).max(100000),
   tagIds: z.array(idSchema).max(30).default([]),
-  eventId: idSchema.nullable().default(null),
+  eventLink: eventLinkSchema.nullable().default(null),
 });
 
 export const taskSchema = taskFieldsSchema.extend({
@@ -131,6 +145,8 @@ export const importedEventSchema = z.object({
   id: z.string(),
   occurrenceId: z.string(),
   sourceId: idSchema,
+  uid: z.string(),
+  recurrenceId: z.string().nullable(),
   sourceName: z.string(),
   title: z.string(),
   startAt: instantSchema,
@@ -189,6 +205,7 @@ export const suggestionSchema = z.object({
 });
 
 export type Task = z.infer<typeof taskSchema>;
+export type EventLink = z.infer<typeof eventLinkSchema>;
 export type Tag = z.infer<typeof tagSchema>;
 export type Session = z.infer<typeof sessionSchema>;
 export type WorkLog = z.infer<typeof workLogSchema>;

@@ -2,7 +2,6 @@
 .gitignore
 .env
 .env.*
-!.env.example
 node_modules
 **/node_modules
 .next
@@ -15,4 +14,13 @@ playwright-report
 .artifacts
 .tools
 README.md
-
+tests
+**/*.test.ts
+**/*.test.tsx
+**/AGENTS.md
+**/CLAUDE.md
+playwright.config.ts
+vitest.config.ts
+vitest.integration.config.ts
+pnpm-lock.yaml
+pnpm-workspace.yaml
