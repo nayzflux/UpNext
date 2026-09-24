@@ -1,11 +1,8 @@
-import { migrate } from "drizzle-orm/node-postgres/migrator";
-import { fileURLToPath } from "node:url";
-import { db, pool } from "./index";
+import { pool } from "./index";
+import { applyMigrations } from "./run-migrations";
 
 try {
-  await migrate(db, {
-    migrationsFolder: fileURLToPath(new URL("../../drizzle", import.meta.url)),
-  });
+  await applyMigrations();
   console.log("Migrations appliquées.");
 } finally {
   await pool.end();

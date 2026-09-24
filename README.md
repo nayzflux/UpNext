@@ -10,7 +10,6 @@ Prérequis : **Node.js 24**, **Bun 1.4.0** et **Docker Compose**.
 Copy-Item .env.example .env
 bun install --frozen-lockfile
 docker compose up -d --wait
-bun run db:migrate
 bun run dev
 ```
 
@@ -61,7 +60,7 @@ bun run --filter @upnext/api start
 bun run --filter @upnext/web start
 ```
 
-Appliquer les migrations avant le démarrage. Pour utiliser un SMTP externe, renseigner les variables `SMTP_*`. Remplacer le secret Better Auth de développement avant toute utilisation publique. Aucun hébergeur n’est requis.
+Les migrations Drizzle sont vérifiées et appliquées automatiquement avant que l’API n’accepte des requêtes, en local comme hors Docker. La commande `bun run db:migrate` reste disponible pour les opérations d’administration. Pour utiliser un SMTP externe, renseigner les variables `SMTP_*`. Remplacer le secret Better Auth de développement avant toute utilisation publique. Aucun hébergeur n’est requis.
 
 ## Utilisation
 
@@ -141,7 +140,7 @@ Les tests navigateur utilisent PostgreSQL et Mailpit démarrés localement. Ils 
 
 Les parcours vérifient aussi la récupération du mot de passe par email, les modals centrés, le snap de quinze minutes, les dimensions de l’aperçu après dépôt et le redimensionnement sur la carte d’origine. Les tests respectent le délai de réessai de Better Auth si plusieurs exécutions rapprochées atteignent la limite d’inscription.
 
-Les versions résolues sont verrouillées dans `bun.lock`. Après une modification du schéma : `bun run db:generate`, relire la migration produite, puis `bun run db:migrate`.
+Les versions résolues sont verrouillées dans `bun.lock`. Après une modification du schéma : `bun run db:generate`, relire la migration produite, puis redémarrer l’API (ou exécuter `bun run db:migrate`).
 
 ## Périmètre V1
 
