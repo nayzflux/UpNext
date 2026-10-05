@@ -89,10 +89,10 @@ export function TaskRow({
       <Button
         type="button"
         variant="ghost"
-        className="h-auto min-w-0 flex-1 justify-start whitespace-normal p-0 text-left"
+        className="h-auto min-w-0 flex-1 flex-col items-start justify-start gap-1 whitespace-normal p-0 text-left"
         onClick={() => openEditor({ type: "detail", taskId: task.id })}
       >
-        <span className="block truncate font-semibold">{task.title}</span>
+        <span className="block w-full truncate font-semibold">{task.title}</span>
         <span
           className={overdue ? "text-xs text-destructive" : "text-xs text-muted-foreground"}
         >

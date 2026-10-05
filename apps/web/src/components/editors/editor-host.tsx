@@ -1,9 +1,13 @@
 "use client";
 
+import { useRef } from "react";
+import { X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useWorkspace, type Editor } from "../workspace-context";
 import {
   Dialog,
   DialogContent,
+  DialogClose,
   DialogDescription,
   DialogHeader,
   DialogTitle,
@@ -17,7 +21,8 @@ import { TaskDetail } from "./task-detail";
 import { EventTasks } from "./event-tasks";
 
 export function EditorHost({ editor }: { editor: Editor }) {
-  const { snapshot, closeEditor, timeZone } = useWorkspace();
+  const { snapshot, requestCloseEditor, timeZone } = useWorkspace();
+  const titleRef = useRef<HTMLHeadingElement>(null);
   const task =
     "taskId" in editor ? snapshot.tasks.find((task) => task.id === editor.taskId) : undefined;
   const session =
@@ -96,13 +101,34 @@ export function EditorHost({ editor }: { editor: Editor }) {
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open) closeEditor();
+        if (!open) requestCloseEditor();
       }}
     >
-      <DialogContent data-testid="editor-modal" className="editor-modal">
-        <DialogHeader className="px-6 pt-6 pr-12">
-          <DialogTitle>{titles[editor.type]}</DialogTitle>
+      <DialogContent
+        data-testid="editor-modal"
+        className="editor-modal"
+        showCloseButton={false}
+        initialFocus={() =>
+          window.matchMedia("(max-width: 767px)").matches ? titleRef.current : true
+        }
+      >
+        <DialogHeader className="relative px-6 pt-6 pr-12">
+          <DialogTitle ref={titleRef} tabIndex={-1}>
+            {titles[editor.type]}
+          </DialogTitle>
           <DialogDescription>{descriptions[editor.type]}</DialogDescription>
+          <DialogClose
+            render={
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute top-2 right-2"
+                aria-label="Fermer"
+              />
+            }
+          >
+            <X />
+          </DialogClose>
         </DialogHeader>
         {content ?? <p className="p-6">Cet élément n’est plus disponible.</p>}
       </DialogContent>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "@tanstack/react-form";
@@ -41,6 +41,8 @@ function authenticationError(error: { code?: string; status?: number }, fallback
 }
 
 export function AuthForm({ mode, token }: { mode: Mode; token?: string }) {
+  const [ready, setReady] = useState(false);
+  useEffect(() => setReady(true), []);
   const router = useRouter();
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -176,6 +178,7 @@ export function AuthForm({ mode, token }: { mode: Mode; token?: string }) {
                       <FieldLabel htmlFor="name">Ton prénom</FieldLabel>
                       <Input
                         id="name"
+                        disabled={!ready}
                         required
                         autoComplete="given-name"
                         value={field.state.value}
@@ -193,6 +196,8 @@ export function AuthForm({ mode, token }: { mode: Mode; token?: string }) {
                       <FieldLabel htmlFor="email">Adresse email</FieldLabel>
                       <Input
                         id="email"
+                        disabled={!ready}
+                        spellCheck={false}
                         type="email"
                         required
                         autoComplete="email"
@@ -211,6 +216,7 @@ export function AuthForm({ mode, token }: { mode: Mode; token?: string }) {
                       <FieldLabel htmlFor="password">Mot de passe</FieldLabel>
                       <Input
                         id="password"
+                        disabled={!ready}
                         type="password"
                         required
                         minLength={mode === "login" ? 1 : 10}
@@ -238,7 +244,12 @@ export function AuthForm({ mode, token }: { mode: Mode; token?: string }) {
               )}
               <form.Subscribe selector={(state) => state.isSubmitting}>
                 {(pending) => (
-                  <Button className="auth-submit" type="submit" size="lg" disabled={pending}>
+                  <Button
+                    className="auth-submit"
+                    type="submit"
+                    size="lg"
+                    disabled={pending || !ready}
+                  >
                     {pending && <Spinner data-icon="inline-start" />}
                     {mode === "login"
                       ? "Me connecter"

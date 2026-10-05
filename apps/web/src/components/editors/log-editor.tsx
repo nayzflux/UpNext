@@ -9,7 +9,7 @@ import {
   type WorkLog,
 } from "@upnext/contracts";
 import { api } from "@/lib/api";
-import { duration, errorMessage } from "@/lib/format";
+import { duration, errorMessage, formatDate } from "@/lib/format";
 import { useAction, useWorkspace } from "../workspace-context";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Spinner } from "@/components/ui/spinner";
 import { FormError } from "./fields";
+import { useFormGuard, useUnsavedForm } from "../form-guard";
 
 export function LogEditor({
   task,
@@ -28,7 +29,81 @@ export function LogEditor({
   session?: Session;
   log?: WorkLog;
 }) {
-  const { now, closeEditor, openEditor } = useWorkspace();
+  const { snapshot, now, timeZone, requestCloseEditor } = useWorkspace();
+  const [choice, setChoice] = useState<string | null | undefined>();
+  const eligibleSessions = snapshot.sessions
+    .filter(
+      (item) =>
+        item.taskId === task.id &&
+        (item.status === "planned" || item.status === "expired") &&
+        new Date(item.startAt) <= now &&
+        !snapshot.logs.some((entry) => entry.sessionId === item.id),
+    )
+    .sort((a, b) => a.startAt.localeCompare(b.startAt));
+  const canChoose = !session && !log && eligibleSessions.length > 0;
+
+  if (canChoose && choice === undefined) {
+    return (
+      <div className="editor-form">
+        <div className="editor-summary">
+          <p className="font-semibold">{task.title}</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Ce bilan concerne-t-il une séance prévue ?
+          </p>
+        </div>
+        <div className="flex flex-col gap-2">
+          {eligibleSessions.map((item) => (
+            <Button
+              key={item.id}
+              type="button"
+              variant="outline"
+              className="h-auto justify-start whitespace-normal py-3 text-left"
+              onClick={() => setChoice(item.id)}
+            >
+              {formatDate(item.startAt, timeZone, "EEE d MMM à HH:mm")} ·{" "}
+              {duration(minutesBetween(item.startAt, item.endAt))}
+            </Button>
+          ))}
+          <Button type="button" variant="outline" onClick={() => setChoice(null)}>
+            Continuer sans réservation
+          </Button>
+        </div>
+        <div className="editor-footer">
+          <Button type="button" variant="outline" onClick={requestCloseEditor}>
+            Annuler
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const selectedSession = choice
+    ? eligibleSessions.find((item) => item.id === choice)
+    : session;
+  return (
+    <LogForm
+      key={selectedSession?.id ?? "without-reservation"}
+      task={task}
+      session={selectedSession}
+      log={log}
+      onBack={canChoose ? () => setChoice(undefined) : undefined}
+    />
+  );
+}
+
+function LogForm({
+  task,
+  session,
+  log,
+  onBack,
+}: {
+  task: Task;
+  session?: Session;
+  log?: WorkLog;
+  onBack?: () => void;
+}) {
+  const { now, closeEditor, requestCloseEditor, openEditor } = useWorkspace();
+  const guard = useFormGuard();
   const action = useAction();
   const [requestId] = useState(() => crypto.randomUUID());
   const defaultMinutes = session
@@ -56,6 +131,7 @@ export function LogEditor({
   );
   const [note, setNote] = useState(log?.note ?? "");
   const [missed, setMissed] = useState(log?.missed ?? false);
+  useUnsavedForm([minutes, progress, note, missed], action.pending);
   const [validationError, setValidationError] = useState("");
 
   async function save(event: React.FormEvent) {
@@ -168,7 +244,12 @@ export function LogEditor({
         <FormError message={validationError || action.error} />
       </FieldGroup>
       <div className="editor-footer">
-        <Button type="button" variant="outline" onClick={closeEditor}>
+        {onBack && (
+          <Button type="button" variant="ghost" onClick={() => guard.run(onBack)}>
+            Changer de choix
+          </Button>
+        )}
+        <Button type="button" variant="outline" onClick={requestCloseEditor}>
           Annuler
         </Button>
         <Button type="submit" disabled={action.pending}>
@@ -186,9 +267,11 @@ export function EstimateEditor({
   task: Task;
   suggestedMinutes: number;
 }) {
-  const { closeEditor } = useWorkspace();
+  const { closeEditor, requestCloseEditor } = useWorkspace();
   const [minutes, setMinutes] = useState(String(Math.min(100000, suggestedMinutes)));
   const action = useAction();
+
+  useUnsavedForm(minutes, action.pending);
 
   async function save(event: React.FormEvent) {
     event.preventDefault();
@@ -232,7 +315,7 @@ export function EstimateEditor({
         <FormError message={action.error} />
       </FieldGroup>
       <div className="editor-footer">
-        <Button type="button" variant="outline" onClick={closeEditor}>
+        <Button type="button" variant="outline" onClick={requestCloseEditor}>
           Garder mon estimation
         </Button>
         <Button type="submit" disabled={action.pending}>

@@ -256,8 +256,8 @@ function SessionBlock({
           type="button"
           variant="ghost"
           className="calendar-block-main"
-          {...(mobile ? {} : listeners)}
-          {...(mobile ? {} : attributes)}
+          {...(mobile || !editable ? {} : listeners)}
+          {...(mobile || !editable ? {} : attributes)}
           title={`${block.title} (${startTime}–${endTime} · ${durationText})`}
           aria-label={
             editable

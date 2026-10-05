@@ -85,24 +85,34 @@ export function CalendarView() {
   const grid = useRef<HTMLDivElement>(null);
   const pointer = useRef<{ x: number; y: number } | null>(null);
   const isPointerDrag = useRef(false);
+  const keyboardDelta = useRef({ x: 0, y: 0 });
   const dragOrigin = useRef({ pageY: 0, grabOffset: 0 });
   const queryClient = useQueryClient();
   const key = orpc.dashboard.get.queryOptions().queryKey;
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, {
+      scrollBehavior: "auto",
       coordinateGetter: (event, { currentCoordinates }) => {
         const dayWidth =
           grid.current?.querySelector("[data-calendar-date]")?.getBoundingClientRect().width ??
           100;
-        if (event.code === "ArrowDown")
+        if (event.code === "ArrowDown") {
+          keyboardDelta.current.y += quarterHeight;
           return { ...currentCoordinates, y: currentCoordinates.y + quarterHeight };
-        if (event.code === "ArrowUp")
+        }
+        if (event.code === "ArrowUp") {
+          keyboardDelta.current.y -= quarterHeight;
           return { ...currentCoordinates, y: currentCoordinates.y - quarterHeight };
-        if (event.code === "ArrowRight")
+        }
+        if (event.code === "ArrowRight") {
+          keyboardDelta.current.x += dayWidth;
           return { ...currentCoordinates, x: currentCoordinates.x + dayWidth };
-        if (event.code === "ArrowLeft")
+        }
+        if (event.code === "ArrowLeft") {
+          keyboardDelta.current.x -= dayWidth;
           return { ...currentCoordinates, x: currentCoordinates.x - dayWidth };
+        }
         return undefined;
       },
     }),
@@ -244,6 +254,7 @@ export function CalendarView() {
     const activator = event.activatorEvent;
     const isPointer = "clientY" in activator && "clientX" in activator;
     isPointerDrag.current = isPointer;
+    keyboardDelta.current = { x: 0, y: 0 };
     const originCard =
       activator.target instanceof Element
         ? activator.target.closest<HTMLElement>("[data-session-id]")
@@ -277,7 +288,7 @@ export function CalendarView() {
       const delta =
         isPointerDrag.current && pointer.current
           ? pointer.current.y + window.scrollY - dragOrigin.current.pageY
-          : event.delta.y;
+          : keyboardDelta.current.y;
       return createPreview(
         data,
         localDate(data.session.startAt, timeZone),
@@ -291,11 +302,11 @@ export function CalendarView() {
         grid.current?.querySelector("[data-calendar-date]")?.getBoundingClientRect().width ??
         100;
       const dayIndex = dates.indexOf(localDate(data.session.startAt, timeZone));
-      const dayDelta = Math.round(event.delta.x / dayWidth);
+      const dayDelta = Math.round(keyboardDelta.current.x / dayWidth);
       const targetDate =
         dates[Math.max(0, Math.min(dates.length - 1, dayIndex + dayDelta))] ?? date;
       const startMinute = minuteOfDay(data.session.startAt, timeZone);
-      const minute = startMinute + event.delta.y / pixelsPerMinute;
+      const minute = startMinute + keyboardDelta.current.y / pixelsPerMinute;
       return createPreview(data, targetDate, minute, timeZone);
     }
     const columns = Array.from(
@@ -485,7 +496,9 @@ export function CalendarView() {
                 <Badge variant="secondary">{backlog.length}</Badge>
               </div>
               <p className="mt-2 mb-5 text-xs leading-relaxed text-muted-foreground">
-                Glisse une tâche dans ton agenda ou choisis son créneau.
+                {mobile
+                  ? "Choisis un créneau pour chaque tâche."
+                  : "Glisse une tâche dans ton agenda ou choisis son créneau."}
               </p>
               <div className="flex flex-col gap-3">
                 {backlog.map((task) => (

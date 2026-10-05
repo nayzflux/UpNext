@@ -27,6 +27,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Spinner } from "@/components/ui/spinner";
 import { DateTimeField, FormError } from "./fields";
 import { SelectControl } from "../select-control";
+import { useUnsavedForm } from "../form-guard";
 
 export function SessionEditor({
   taskId,
@@ -41,7 +42,7 @@ export function SessionEditor({
   initialDate?: string;
   initialMinutes?: number;
 }) {
-  const { snapshot, timeZone, now, closeEditor } = useWorkspace();
+  const { snapshot, timeZone, now, closeEditor, requestCloseEditor } = useWorkspace();
   const [selectedTaskId, setSelectedTaskId] = useState(session?.taskId ?? taskId ?? "");
   const task = snapshot.tasks.find((task) => task.id === selectedTaskId);
   const [start, setStart] = useState(
@@ -59,6 +60,10 @@ export function SessionEditor({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [validationError, setValidationError] = useState("");
   const action = useAction();
+  useUnsavedForm(
+    [selectedTaskId, start, minutes, customPercent, allowOverlap],
+    action.pending,
+  );
   const parsedMinutes = Number(minutes);
   const hasMinutes = minutes !== "" && Number.isFinite(parsedMinutes);
   const suggestions = useQuery({
@@ -289,7 +294,7 @@ export function SessionEditor({
         <FormError message={validationError || action.error} />
       </FieldGroup>
       <div className="editor-footer">
-        <Button type="button" variant="outline" onClick={closeEditor}>
+        <Button type="button" variant="outline" onClick={requestCloseEditor}>
           Annuler
         </Button>
         <Button type="submit" disabled={action.pending || !task || exceeds}>

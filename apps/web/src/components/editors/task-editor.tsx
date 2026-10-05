@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useForm } from "@tanstack/react-form";
+import { useForm, useStore } from "@tanstack/react-form";
+import { useUnsavedForm } from "../form-guard";
 import { useQuery } from "@tanstack/react-query";
 import {
   addCalendarDays,
@@ -35,7 +36,7 @@ export function TaskEditor({
   task?: Task;
   initialEvent?: EventOccurrence | ImportedEvent;
 }) {
-  const { snapshot, now, timeZone, closeEditor } = useWorkspace();
+  const { snapshot, now, timeZone, closeEditor, requestCloseEditor } = useWorkspace();
   const action = useAction();
   const [validationError, setValidationError] = useState("");
   const initialLink = task?.eventLink ?? (initialEvent ? eventLinkFor(initialEvent) : null);
@@ -106,6 +107,9 @@ export function TaskEditor({
     },
   });
 
+  const values = useStore(form.store, (state) => state.values);
+  useUnsavedForm(values, action.pending);
+
   return (
     <form
       className="editor-form"
@@ -121,7 +125,6 @@ export function TaskEditor({
               <FieldLabel htmlFor="task-title">Qu’as-tu à faire ?</FieldLabel>
               <Input
                 id="task-title"
-                autoFocus
                 required
                 maxLength={200}
                 placeholder="Préparer le prochain DS…"
@@ -316,7 +319,7 @@ export function TaskEditor({
         <FormError message={validationError || action.error} />
       </FieldGroup>
       <div className="editor-footer">
-        <Button type="button" variant="outline" onClick={closeEditor}>
+        <Button type="button" variant="outline" onClick={requestCloseEditor}>
           Annuler
         </Button>
         <Button type="submit" disabled={action.pending}>

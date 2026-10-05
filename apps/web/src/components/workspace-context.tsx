@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useRef, useState } from "react";
 import type { EventOccurrence, ImportedEvent } from "@upnext/contracts";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Snapshot } from "@upnext/contracts";
@@ -29,6 +29,7 @@ export const WorkspaceContext = createContext<{
   viewer: { name: string; email: string };
   openEditor: (editor: Editor) => void;
   closeEditor: () => void;
+  requestCloseEditor: () => void;
 } | null>(null);
 
 export function useWorkspace() {
@@ -45,11 +46,14 @@ export function useAction() {
   const queryClient = useQueryClient();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
+  const inFlight = useRef(false);
 
   async function run<T>(
     operation: () => Promise<T>,
     successMessage?: string,
   ): Promise<T | null> {
+    if (inFlight.current) return null;
+    inFlight.current = true;
     setPending(true);
     setError("");
     try {
@@ -72,6 +76,7 @@ export function useAction() {
       });
       return null;
     } finally {
+      inFlight.current = false;
       setPending(false);
     }
   }

@@ -7,6 +7,7 @@ function Progress({ className, children, value, ...props }: ProgressPrimitive.Ro
   return (
     <ProgressPrimitive.Root
       value={value}
+      locale="fr-FR"
       data-slot="progress"
       className={cn("flex flex-wrap gap-3", className)}
       {...props}
@@ -36,7 +37,7 @@ function ProgressIndicator({ className, ...props }: ProgressPrimitive.Indicator.
   return (
     <ProgressPrimitive.Indicator
       data-slot="progress-indicator"
-      className={cn("h-full bg-primary transition-all", className)}
+      className={cn("h-full bg-primary transition-[width]", className)}
       {...props}
     />
   );

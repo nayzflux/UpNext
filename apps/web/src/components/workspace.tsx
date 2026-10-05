@@ -30,6 +30,9 @@ import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { WorkspaceContext, type Editor } from "./workspace-context";
 import { EditorHost } from "./editors/editor-host";
+import { FormGuard, useFormGuard } from "./form-guard";
+import { WorkspaceSidebar } from "./workspace-sidebar";
+import { toast } from "@/components/ui/toast";
 
 const navigation = [
   { href: "/aujourdhui", label: "Aujourd’hui", icon: Sun },
@@ -37,7 +40,15 @@ const navigation = [
   { href: "/calendrier", label: "Calendrier", icon: CalendarDays },
 ];
 
-export function Workspace({
+export function Workspace(props: React.ComponentProps<typeof WorkspaceContent>) {
+  return (
+    <FormGuard>
+      <WorkspaceContent {...props} />
+    </FormGuard>
+  );
+}
+
+function WorkspaceContent({
   viewer,
   children,
 }: {
@@ -45,13 +56,17 @@ export function Workspace({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const guard = useFormGuard();
   const router = useRouter();
   const queryClient = useQueryClient();
   const query = useQuery({ ...orpc.dashboard.get.queryOptions(), refetchInterval: 60000 });
   const { setTheme } = useTheme();
   const [editor, setEditor] = useState<Editor | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const snapshot = query.data;
+  const sessionExpired =
+    query.error != null && "code" in query.error && query.error.code === "UNAUTHORIZED";
   const syncInFlight = useRef(false);
 
   useEffect(() => {
@@ -133,30 +148,40 @@ export function Workspace({
   const title = navigation.find((item) => pathname === item.href)?.label ?? "Paramètres";
 
   async function logout() {
-    await authClient.signOut();
-    queryClient.clear();
-    router.push("/connexion");
-    router.refresh();
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      const result = await authClient.signOut();
+      if (result.error) throw new Error(result.error.message ?? "Réessaie dans un instant.");
+      queryClient.clear();
+      router.push("/connexion");
+      router.refresh();
+    } catch {
+      toast.add({
+        title: "La déconnexion a échoué",
+        description: "Vérifie ta connexion et réessaie.",
+        type: "error",
+      });
+    } finally {
+      setLoggingOut(false);
+    }
   }
 
   return (
     <WorkspaceContext
-      value={{ snapshot, viewer, openEditor: setEditor, closeEditor: () => setEditor(null) }}
+      value={{
+        snapshot,
+        viewer,
+        openEditor: setEditor,
+        closeEditor: () => setEditor(null),
+        requestCloseEditor: () => guard.run(() => setEditor(null)),
+      }}
     >
       <a className="skip-link" href="#main-content">
         Aller au contenu
       </a>
       <div className="app-layout">
-        {menuOpen && (
-          <Button
-            type="button"
-            variant="ghost"
-            className="mobile-scrim h-auto w-auto rounded-none p-0"
-            aria-label="Fermer la navigation"
-            onClick={() => setMenuOpen(false)}
-          />
-        )}
-        <aside className={cn("app-sidebar", menuOpen && "is-open")}>
+        <WorkspaceSidebar open={menuOpen} onOpenChange={setMenuOpen}>
           <div className="flex items-center justify-between">
             <Link href="/aujourdhui" className="brand">
               <span className="brand-mark">
@@ -260,13 +285,14 @@ export function Workspace({
                 size="icon-sm"
                 variant="ghost"
                 aria-label="Se déconnecter"
-                onClick={() => void logout()}
+                disabled={loggingOut}
+                onClick={() => guard.run(() => void logout())}
               >
                 <LogOut />
               </Button>
             </div>
           </div>
-        </aside>
+        </WorkspaceSidebar>
         <div className="main-column">
           <header className="app-topbar">
             <div className="flex items-center gap-3">
@@ -275,6 +301,7 @@ export function Workspace({
                 variant="ghost"
                 size="icon"
                 aria-label="Ouvrir le menu"
+                aria-expanded={menuOpen}
                 onClick={() => setMenuOpen(true)}
               >
                 <Menu />
@@ -296,10 +323,27 @@ export function Workspace({
             {query.isError && (
               <Alert className="mb-5" variant="destructive">
                 <AlertDescription>
-                  La connexion est interrompue. Les dernières données restent affichées.{" "}
-                  <Button variant="link" onClick={() => void query.refetch()}>
-                    Réessayer
-                  </Button>
+                  {sessionExpired ? (
+                    <>
+                      Ta session a expiré. Reconnecte-toi dans un autre onglet pour conserver
+                      ta saisie.{" "}
+                      <a
+                        href="/connexion"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline"
+                      >
+                        Se reconnecter
+                      </a>
+                    </>
+                  ) : (
+                    <>
+                      La connexion est interrompue. Les dernières données restent affichées.{" "}
+                      <Button variant="link" onClick={() => void query.refetch()}>
+                        Réessayer
+                      </Button>
+                    </>
+                  )}
                 </AlertDescription>
               </Alert>
             )}

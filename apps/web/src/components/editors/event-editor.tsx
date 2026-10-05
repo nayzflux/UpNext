@@ -13,6 +13,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { DatePicker, DateTimeField, FormError } from "./fields";
 import { ConfirmAction } from "../common";
 import { EventTasks } from "./event-tasks";
+import { useUnsavedForm } from "../form-guard";
 
 export function EventEditor({
   event,
@@ -23,7 +24,7 @@ export function EventEditor({
   initialStart?: string;
   occurrenceIndex?: number;
 }) {
-  const { timeZone: accountZone, closeEditor } = useWorkspace();
+  const { timeZone: accountZone, closeEditor, requestCloseEditor } = useWorkspace();
   const timeZone = event?.timeZone ?? accountZone;
   const defaultStart = initialStart ?? "";
   const [title, setTitle] = useState(event?.title ?? "");
@@ -45,6 +46,7 @@ export function EventEditor({
   const [allowOverlap, setAllowOverlap] = useState(false);
   const [validationError, setValidationError] = useState("");
   const action = useAction();
+  useUnsavedForm([title, start, end, weekly, repeatUntil, allowOverlap], action.pending);
   const occurrence = event ? localEventOccurrence(event, occurrenceIndex) : null;
 
   async function save(formEvent: React.FormEvent) {
@@ -82,7 +84,6 @@ export function EventEditor({
           <FieldLabel htmlFor="event-title">Nom de l’événement</FieldLabel>
           <Input
             id="event-title"
-            autoFocus
             required
             maxLength={200}
             value={title}
@@ -142,7 +143,7 @@ export function EventEditor({
             </Button>
           </ConfirmAction>
         ) : (
-          <Button type="button" variant="outline" onClick={closeEditor}>
+          <Button type="button" variant="outline" onClick={requestCloseEditor}>
             Annuler
           </Button>
         )}
