@@ -13,6 +13,7 @@ La cible vérifiée est la pile Docker, derrière un proxy HTTPS local avec Mail
 - Refus des configurations de production incorrectes, cookies HTTPS, origine publique contrôlée, quotas d'authentification conservés en PostgreSQL et adresse client fournie par le proxy.
 - Contrôle de santé PostgreSQL avec réponse 503 ; récupération après fermeture des connexions inactives sans arrêt de l'API.
 - Mise à jour de Next.js et esbuild, images de version identifiables pour le retour arrière, CI et guide d'exploitation.
+- Déclaration ESM du frontend, avec collecte des tests vérifiée sur Node 24.21 Linux ; contrôle de collecte ajouté à la CI avant le build.
 
 ## Vérifications
 
