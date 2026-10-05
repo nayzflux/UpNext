@@ -5,11 +5,21 @@ import { RPCHandler } from "@orpc/server/fetch";
 import { auth } from "./auth";
 import { env } from "./env";
 import { router } from "./router";
+import { pool } from "./db";
 
 export const app = new Hono();
 app.use(secureHeaders());
 app.use(bodyLimit({ maxSize: 1024 * 1024 }));
-app.get("/health", (context) => context.json({ status: "ok" }));
+app.get("/health", async (context) => {
+  context.header("Cache-Control", "no-store");
+  try {
+    const healthQuery = { text: "select 1", query_timeout: 2000 };
+    await pool.query(healthQuery);
+    return context.json({ status: "ok" });
+  } catch {
+    return context.json({ status: "unavailable" }, 503);
+  }
+});
 app.on(["GET", "POST"], "/api/auth/*", (context) => auth.handler(context.req.raw));
 
 const handler = new RPCHandler(router);

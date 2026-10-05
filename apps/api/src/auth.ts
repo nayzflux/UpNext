@@ -9,6 +9,9 @@ const mail = nodemailer.createTransport({
   host: env.SMTP_HOST,
   port: env.SMTP_PORT,
   secure: env.SMTP_SECURE,
+  connectionTimeout: 10000,
+  greetingTimeout: 10000,
+  socketTimeout: 20000,
   auth: env.SMTP_USER ? { user: env.SMTP_USER, pass: env.SMTP_PASSWORD } : undefined,
 });
 
@@ -18,6 +21,10 @@ export const auth = betterAuth({
   basePath: "/api/auth",
   secret: env.BETTER_AUTH_SECRET,
   trustedOrigins: [env.APP_URL],
+  advanced: {
+    useSecureCookies: new URL(env.APP_URL).protocol === "https:",
+    ipAddress: { ipAddressHeaders: [env.AUTH_IP_HEADER] },
+  },
   database: drizzleAdapter(db, { provider: "pg", schema }),
   emailAndPassword: {
     enabled: true,
@@ -45,5 +52,11 @@ export const auth = betterAuth({
       });
     },
   },
-  rateLimit: { enabled: true },
+  rateLimit: {
+    enabled: true,
+    storage: env.NODE_ENV === "production" ? "database" : "memory",
+    // Server renders repeatedly read the same session without a client IP.
+    // Keep abuse limits on authentication writes, not these read-only lookups.
+    customRules: { "/get-session": false },
+  },
 });
