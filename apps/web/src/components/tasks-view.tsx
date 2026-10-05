@@ -126,10 +126,10 @@ export function TasksView() {
             <Button
               type="button"
               variant="ghost"
-              className="h-auto justify-start whitespace-normal p-0 text-left"
+              className="h-auto min-w-0 flex-1 shrink justify-start whitespace-normal p-0 text-left"
               onClick={() => openEditor({ type: "detail", taskId: row.original.id })}
             >
-              <span className="font-semibold">{row.original.title}</span>
+              <span className="min-w-0 break-words font-semibold">{row.original.title}</span>
             </Button>
           </div>
         ),
@@ -343,7 +343,7 @@ export function TasksView() {
                   {table.getRowModel().rows.map((row) => (
                     <TableRow key={row.id}>
                       {row.getVisibleCells().map((cell) => (
-                        <TableCell className="py-5" key={cell.id}>
+                        <TableCell className="whitespace-normal py-5" key={cell.id}>
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </TableCell>
                       ))}

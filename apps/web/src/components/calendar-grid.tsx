@@ -169,16 +169,16 @@ function BlockText({ block }: { block: CalendarBlock }) {
     <>
       <strong>
         {block.title}
-        {block.event && linkedCount > 0 && durationMinutes < 30
+        {block.event && linkedCount > 0 && durationMinutes < 45
           ? ` · ${linkedCount} tâche${linkedCount > 1 ? "s" : ""}`
           : ""}
       </strong>
-      {linkedCount > 0 && durationMinutes >= 30 && (
+      {linkedCount > 0 && durationMinutes >= 45 && (
         <span className="text-xs font-semibold">
           {linkedCount} tâche{linkedCount > 1 ? "s" : ""} associée{linkedCount > 1 ? "s" : ""}
         </span>
       )}
-      {block.event && "sourceId" in block.event && durationMinutes >= 30 && (
+      {block.event && "sourceId" in block.event && durationMinutes >= 45 && (
         <span>
           {block.event.sourceName}
           {block.event.allDay ? " · Journée entière" : ""}

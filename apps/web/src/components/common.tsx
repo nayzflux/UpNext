@@ -56,7 +56,11 @@ export function TaskTags({ task }: { task: Task }) {
       {task.tagIds.map((id) => {
         const tag = snapshot.tags.find((tag) => tag.id === id);
         return tag ? (
-          <Badge key={id} variant="secondary">
+          <Badge
+            key={id}
+            variant="secondary"
+            className="h-auto max-w-full whitespace-normal break-words text-left"
+          >
             {tag.name}
           </Badge>
         ) : null;
