@@ -1,0 +1,60 @@
+name: Validate UpNext
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: validation-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
+      # No upstream fix exists for this build-tool-only braces advisory.
+      # See docs/production.md. Every other advisory remains blocking.
+      - run: bun audit --ignore GHSA-vfj7-8cjw-p6xm
+      - run: cp .env.example .env
+      - run: docker compose up -d --wait
+      - run: docker compose exec -T postgres psql -U upnext -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE upnext_test'
+      - run: bun run typecheck
+      - run: bun run lint
+      - run: bun run test
+      - run: bun run test:integration
+      - run: bun run build
+      - if: always()
+        run: docker compose down
+  production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
+      - run: bunx playwright install --with-deps chromium webkit
+      - run: bun run validate:production
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: production-validation
+          path: |
+            playwright-report/
+            test-results/
+            .artifacts/qa/
+            .artifacts/production-validation.json
+          retention-days: 14

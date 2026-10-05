@@ -43,7 +43,7 @@ Copy-Item .env.production.example .env.production
 docker compose --env-file .env.production -f compose.production.yaml up --build -d --wait
 ```
 
-L'application est alors disponible sur <http://localhost:3000>. Seul le frontend est publié sur l'hôte par défaut ; l'API et PostgreSQL restent sur le réseau Docker. Après que PostgreSQL est prêt, l'API applique les migrations avant d'accepter des requêtes ; le frontend attend ensuite que l'API soit saine. L'adresse interne `http://api:3001` est intégrée au build du frontend. Pour une exposition publique, définir `APP_URL`, `WEB_BIND_ADDRESS` et `WEB_PORT` selon le domaine et le reverse proxy utilisés, et configurer un SMTP externe avec `SMTP_*`.
+Le frontend écoute sur le port local configuré. La version de production exige un reverse proxy HTTPS et une origine publique correcte dans `APP_URL`. Seul le frontend est publié sur l'hôte par défaut ; l'API et PostgreSQL restent sur le réseau Docker. Après que PostgreSQL est prêt, l'API applique les migrations avant d'accepter des requêtes ; le frontend attend ensuite que l'API soit saine. L'adresse interne `http://api:3001` est intégrée au build du frontend. Pour une exposition publique, définir `APP_URL`, `WEB_BIND_ADDRESS` et `WEB_PORT` selon le domaine et le reverse proxy utilisés, et configurer un SMTP externe avec `SMTP_*`.
 
 Pour arrêter la pile sans supprimer les données :
 
@@ -61,6 +61,8 @@ bun run --filter @upnext/web start
 ```
 
 Les migrations Drizzle sont vérifiées et appliquées automatiquement avant que l’API n’accepte des requêtes, dans Docker comme hors Docker. La commande `bun run db:migrate` reste disponible pour les opérations d’administration. Pour utiliser un SMTP externe, renseigner les variables `SMTP_*`. Remplacer le secret Better Auth de développement avant toute utilisation publique. Aucun hébergeur n’est requis.
+
+Les procédures HTTPS/SMTP, sauvegarde, restauration et retour de version sont décrites dans [le guide de production](docs/production.md). La commande `bun run validate:production` vérifie une pile Docker isolée derrière HTTPS.
 
 ## Utilisation
 
@@ -129,7 +131,7 @@ bun run test
 docker compose exec -T postgres psql -U upnext -d postgres -c "CREATE DATABASE upnext_test"
 bun run test:integration
 
-bunx playwright install chromium
+bunx playwright install chromium webkit
 bun run test:e2e
 bun run build
 ```

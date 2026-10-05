@@ -1,0 +1,20 @@
+# Disposable validation stack. Always combine with compose.production.yaml and
+# use a separate project name; never attach production or development volumes.
+services:
+  api:
+    image: upnext-validation-api:local
+  web:
+    image: upnext-validation-web:local
+  mailpit:
+    image: axllent/mailpit:v1.27
+    ports:
+      - "127.0.0.1:8026:8025"
+  proxy:
+    image: caddy:2-alpine
+    ports:
+      - "127.0.0.1:3443:443"
+    volumes:
+      - ./tests/production/Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      web:
+        condition: service_healthy

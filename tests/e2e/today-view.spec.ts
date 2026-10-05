@@ -46,9 +46,18 @@ test("la page Aujourd’hui hiérarchise tâches, séances et calendrier", async
   await expect(page.getByRole("heading", { name: "La semaine en un regard" })).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(page.locator(".today-primary-grid")).toHaveCSS(
-    "grid-template-columns",
-    "354px",
+  await expect
+    .poll(() =>
+      page
+        .locator(".today-primary-grid")
+        .evaluate(
+          (element) =>
+            getComputedStyle(element).gridTemplateColumns.trim().split(/\s+/).length,
+        ),
+    )
+    .toBe(1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+    390,
   );
   await expect(page.locator(".today-week-section .week-overview")).toHaveCSS(
     "overflow-x",

@@ -151,13 +151,14 @@ test("une séance terminée reste prévue pendant la grâce et s'ouvre sur son b
   await page
     .getByRole("button", { name: /Réviser pendant la grâce.*Faire le bilan de la séance/ })
     .click();
-  await expect(page.getByLabel("Je n’ai pas pu faire cette séance")).toBeVisible();
-  await page.getByLabel("Je n’ai pas pu faire cette séance").click();
+  const missed = page.getByRole("checkbox", { name: "Je n’ai pas pu faire cette séance" });
+  await expect(missed).toBeVisible();
+  await missed.click();
   await page.getByRole("button", { name: "Enregistrer le bilan" }).click();
   await expect(page.getByTestId("editor-modal")).toHaveCount(0);
   await page.goto("/taches");
   await page.getByRole("button", { name: "Réviser pendant la grâce", exact: true }).click();
-  await expect(page.getByText("Manquée")).toBeVisible();
+  await expect(page.getByText("Séance manquée", { exact: true })).toBeVisible();
 });
 
 test("tâche sans tag, réutilisation, doublons, renommage et suppression", async ({ page }) => {

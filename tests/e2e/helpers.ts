@@ -1,6 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
 import { addCalendarDays, localDate } from "../../packages/contracts/src/domain";
 const password = "Local-test-UpNext-2026!";
+export const mailpitUrl = process.env.E2E_MAILPIT_URL ?? "http://localhost:8025";
+
+export function emailLink(text: string, path: string) {
+  const links = text.match(/https?:\/\/\S+/g) ?? [];
+  return links.find((link) => new URL(link).pathname.startsWith(path));
+}
 
 export async function signUp(page: Page) {
   const email = `e2e-${crypto.randomUUID()}@upnext.local`;
@@ -14,9 +20,14 @@ export async function signUp(page: Page) {
     );
     await page.getByRole("button", { name: "Créer mon espace" }).click();
     const response = await responsePromise;
+    expect(response.request().postDataJSON().name).toBe("Lou");
     if (response.status() !== 429) break;
     // Repeated local runs share the real authentication rate limit.
-    const retrySeconds = Number(await response.headerValue("retry-after")) || 60;
+    const retrySeconds =
+      Number(
+        (await response.headerValue("retry-after")) ??
+          (await response.headerValue("x-retry-after")),
+      ) || 60;
     const retryMilliseconds = (retrySeconds + 1) * 1000;
     test.setTimeout(test.info().timeout + retryMilliseconds);
     await new Promise((resolve) => setTimeout(resolve, retryMilliseconds));
@@ -27,9 +38,7 @@ export async function signUp(page: Page) {
   let messageId = "";
   await expect
     .poll(async () => {
-      const response = await page.request.get(
-        "http://localhost:8025/api/v1/messages?limit=100",
-      );
+      const response = await page.request.get(`${mailpitUrl}/api/v1/messages?limit=100`);
       const inbox = await response.json();
       const message = inbox.messages.find((item: { To: { Address: string }[] }) =>
         item.To.some((to) => to.Address === email),
@@ -39,11 +48,9 @@ export async function signUp(page: Page) {
     })
     .not.toBe("");
   const message = await (
-    await page.request.get(`http://localhost:8025/api/v1/message/${messageId}`)
+    await page.request.get(`${mailpitUrl}/api/v1/message/${messageId}`)
   ).json();
-  const verificationUrl = (message.Text as string).match(
-    /http:\/\/localhost:3000\/api\/auth\/verify-email\?\S+/,
-  )?.[0];
+  const verificationUrl = emailLink(message.Text as string, "/api/auth/verify-email");
   expect(verificationUrl).toBeTruthy();
   await page.goto(verificationUrl!);
   await expect(page.getByRole("heading", { name: "Bonjour Lou." })).toBeVisible();

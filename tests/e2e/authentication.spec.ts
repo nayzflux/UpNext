@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { signUp } from "./helpers";
+import { emailLink, mailpitUrl, signUp } from "./helpers";
 
 test("déconnexion, récupération par email et connexion avec le nouveau mot de passe", async ({
   page,
@@ -23,7 +23,7 @@ test("déconnexion, récupération par email et connexion avec le nouveau mot de
   await expect
     .poll(async () => {
       const inbox = await (
-        await page.request.get("http://localhost:8025/api/v1/messages?limit=100")
+        await page.request.get(`${mailpitUrl}/api/v1/messages?limit=100`)
       ).json();
       const message = inbox.messages.find(
         (item: { Subject: string; ID: string; To: { Address: string }[] }) =>
@@ -34,11 +34,9 @@ test("déconnexion, récupération par email et connexion avec le nouveau mot de
     })
     .not.toBe("");
   const message = await (
-    await page.request.get(`http://localhost:8025/api/v1/message/${messageId}`)
+    await page.request.get(`${mailpitUrl}/api/v1/message/${messageId}`)
   ).json();
-  const resetUrl = (message.Text as string).match(
-    /http:\/\/localhost:3000\/api\/auth\/reset-password\/\S+/,
-  )?.[0];
+  const resetUrl = emailLink(message.Text as string, "/api/auth/reset-password/");
   expect(resetUrl).toBeTruthy();
   await page.goto(resetUrl!);
   const newPassword = "Un-nouveau-mot-de-passe-2026!";

@@ -18,6 +18,13 @@ test("modal centré, aperçu à taille réelle, snap et redimensionnement sur la
   await signUp(page);
   await openTaskForm(page, "Séance de deux heures");
   const modal = page.getByTestId("editor-modal");
+  // Wait for the opening animation before comparing the final geometry.
+  await expect
+    .poll(async () => {
+      const box = await modal.boundingBox();
+      return box ? Math.round(box.x + box.width / 2) : null;
+    })
+    .toBe(720);
   const modalBox = await modal.boundingBox();
   expect(modalBox!.x + modalBox!.width / 2).toBeCloseTo(720, 0);
   expect(modalBox!.width).toBeGreaterThan(500);
