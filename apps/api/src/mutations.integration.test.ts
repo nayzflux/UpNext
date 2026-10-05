@@ -516,18 +516,46 @@ describe("PostgreSQL : propriété, contraintes et transactions", () => {
       unplannedMinutes: 0,
     });
   });
-  it("à 100 %, annule les futures séances et garde leur historique", async () => {
+  it("à 100 %, retire les séances futures et conserve les bilans effectués", async () => {
     const task = await saveTask(bob, taskInput());
-    const reserved = await saveSession(bob, {
+    const completed = await saveSession(bob, {
+      taskId: task.id,
+      startAt: future(-2),
+      endAt: future(-2, 11),
+      allowOverlap: true,
+    });
+    const firstLog = await saveLog(bob, {
+      ...logInput(task),
+      sessionId: completed.id,
+    });
+    const firstFuture = await saveSession(bob, {
       taskId: task.id,
       startAt: future(5),
       endAt: future(5, 11),
       allowOverlap: false,
     });
-    await saveLog(bob, { ...logInput(task), progressAfter: 100 });
-    expect(
-      (await getSnapshot(bob)).sessions.find((item) => item.id === reserved.id),
-    ).toMatchObject({ status: "cancelled", cancellationReason: "task-completed" });
+    const secondFuture = await saveSession(bob, {
+      taskId: task.id,
+      startAt: future(6),
+      endAt: future(6, 11),
+      allowOverlap: false,
+    });
+    const currentTask = (await getSnapshot(bob)).tasks.find((item) => item.id === task.id)!;
+    const finalLog = await saveLog(bob, { ...logInput(currentTask), progressAfter: 100 });
+    const snapshot = await getSnapshot(bob);
+    expect(snapshot.sessions.find((item) => item.id === completed.id)?.status).toBe("completed");
+    expect(snapshot.sessions.some((item) => item.id === firstFuture.id)).toBe(false);
+    expect(snapshot.sessions.some((item) => item.id === secondFuture.id)).toBe(false);
+    expect(snapshot.logs.find((item) => item.id === firstLog.log.id)?.sessionId).toBe(completed.id);
+    expect(snapshot.logs.find((item) => item.id === finalLog.log.id)).toBeDefined();
+    const archived = await db
+      .select()
+      .from(studySessions)
+      .where(inArray(studySessions.id, [firstFuture.id, secondFuture.id]));
+    expect(archived).toHaveLength(2);
+    expect(archived.every((item) => item.status === "cancelled")).toBe(true);
+    expect(archived.every((item) => item.cancellationReason === "task-completed")).toBe(true);
+    expect(archived.every((item) => item.archivedAt !== null)).toBe(true);
     await expect(
       saveSession(bob, {
         taskId: task.id,
@@ -536,6 +564,16 @@ describe("PostgreSQL : propriété, contraintes et transactions", () => {
         allowOverlap: false,
       }),
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    const finishedTask = snapshot.tasks.find((item) => item.id === task.id)!;
+    await saveLog(bob, {
+      ...logInput(finishedTask),
+      id: finalLog.log.id,
+      progressAfter: 80,
+    });
+    const corrected = await getSnapshot(bob);
+    expect(corrected.tasks.find((item) => item.id === task.id)?.progress).toBe(80);
+    expect(corrected.sessions.some((item) => item.id === firstFuture.id)).toBe(false);
+    expect(corrected.sessions.some((item) => item.id === secondFuture.id)).toBe(false);
   });
   it("isole les préférences et refuse un conflit avec un événement hebdomadaire", async () => {
     await savePreferences(bob, {

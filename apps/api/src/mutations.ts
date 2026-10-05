@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNull, sql } from "drizzle-orm";
 import { ORPCError } from "@orpc/server";
 import {
   defaultSessionPercent,
@@ -417,18 +417,22 @@ export async function saveLog(userId: string, input: z.infer<typeof logInputSche
       .where(eq(tasks.id, task.id));
     const graceCutoff = new Date(Date.now() - SESSION_GRACE_MS).toISOString();
     if (progressAfter === 100) {
+      const completedAt = new Date().toISOString();
       await connection
         .update(studySessions)
         .set({
           status: "cancelled",
           cancellationReason: "task-completed",
+          archivedAt: completedAt,
           revision: sql`${studySessions.revision} + 1`,
         })
         .where(
           and(
+            eq(studySessions.userId, userId),
             eq(studySessions.taskId, task.id),
             eq(studySessions.status, "planned"),
-            gt(studySessions.endAt, graceCutoff),
+            isNull(studySessions.archivedAt),
+            gt(studySessions.startAt, completedAt),
           ),
         );
     } else {
