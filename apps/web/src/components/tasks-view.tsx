@@ -26,6 +26,7 @@ import {
 import { getTaskMetrics, type Task } from "@upnext/contracts";
 import { useWorkspace } from "./workspace-context";
 import { duration, formatDate, formatTimeUntil } from "@/lib/format";
+import { matchesTaskSearch } from "@/lib/task-search";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
@@ -60,15 +61,18 @@ export function TasksView() {
   const [status, setStatus] = useState("active");
   const [priority, setPriority] = useState("all");
   const [deadline, setDeadline] = useState("all");
+  const tagNames = useMemo(
+    () => new Map(snapshot.tags.map((item) => [item.id, item.name])),
+    [snapshot.tags],
+  );
   const data = useMemo(
     () =>
       snapshot.tasks.filter((task) => {
-        if (
-          !`${task.title} ${task.notes}`
-            .toLocaleLowerCase("fr")
-            .includes(search.toLocaleLowerCase("fr"))
-        )
-          return false;
+        const taskTagNames = task.tagIds.flatMap((id) => {
+          const name = tagNames.get(id);
+          return name ? [name] : [];
+        });
+        if (!matchesTaskSearch(task, taskTagNames, search)) return false;
         if (tag === "none" && task.tagIds.length > 0) return false;
         if (tag !== "all" && tag !== "none" && !task.tagIds.includes(tag)) return false;
         if (status === "active" && task.progress === 100) return false;
@@ -99,7 +103,7 @@ export function TasksView() {
         }
         return true;
       }),
-    [snapshot, search, tag, status, priority, deadline],
+    [snapshot, search, tag, status, priority, deadline, tagNames],
   );
 
   const columns = useMemo<ColumnDef<typeof features, Task>[]>(
