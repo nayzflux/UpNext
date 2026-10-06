@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  canPlanTask,
   defaultSessionPercent,
   expandEvents,
   localEventOccurrence,
@@ -129,6 +130,20 @@ function suggestions(overrides: Partial<Parameters<typeof suggestSlots>[0]> = {}
 }
 
 describe("tâches, tags et avancement", () => {
+  it("ne propose la planification que lorsqu'il reste une part disponible", () => {
+    const reserved = session("2026-03-24T10:00:00Z", "2026-03-24T11:00:00Z");
+    expect(canPlanTask(task, [], now)).toBe(true);
+    expect(canPlanTask(task, [reserved], now)).toBe(true);
+    expect(canPlanTask(task, [{ ...reserved, plannedPercent: 75 }], now)).toBe(false);
+    expect(canPlanTask(task, [{ ...reserved, plannedPercent: 74.9999999 }], now)).toBe(false);
+    expect(canPlanTask({ ...task, progress: 100 }, [], now)).toBe(false);
+    expect(
+      canPlanTask(task, [{ ...reserved, status: "cancelled", plannedPercent: 75 }], now),
+    ).toBe(true);
+    expect(
+      getTaskMetrics(task, [{ ...reserved, plannedPercent: 74.9999999 }], [], now),
+    ).toMatchObject({ planning: "full", unplannedMinutes: 0 });
+  });
   it("autorise une tâche sans tag et normalise les noms", () => {
     expect(taskFieldsSchema.parse(task).tagIds).toEqual([]);
     expect(normalizeTagName("  Révision   DS  ")).toBe("révision ds");

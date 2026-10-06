@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { CalendarClock, Check, Clock3, Plus } from "lucide-react";
-import { getTaskMetrics, type Task } from "@upnext/contracts";
+import { canPlanTask, getTaskMetrics, type Task } from "@upnext/contracts";
 import { useWorkspace } from "./workspace-context";
 import { duration, formatDate, formatTimeUntil } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
@@ -113,7 +113,7 @@ export function TaskRow({
         </span>
         <Progress value={task.progress} aria-label={`Avancement de ${task.title}`} />
       </div>
-      {planningAction && task.progress < 100 && (
+      {planningAction && canPlanTask(task, snapshot.sessions, now) && (
         <Button
           variant="ghost"
           size="icon-sm"

@@ -26,8 +26,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarPlus, ChevronLeft, ChevronRight, Plus, RefreshCw } from "lucide-react";
 import {
   addCalendarDays,
+  canPlanTask,
   expandEvents,
-  getTaskMetrics,
   localDate,
   minutesBetween,
   weekdayOfDate,
@@ -177,11 +177,7 @@ export function CalendarView() {
     [snapshot.sessions, filteredTaskIds],
   );
   const backlog = filteredTasks
-    .filter(
-      (task) =>
-        task.progress < 100 &&
-        getTaskMetrics(task, snapshot.sessions, snapshot.logs, now).unplannedMinutes > 0,
-    )
+    .filter((task) => canPlanTask(task, snapshot.sessions, now))
     .sort((a, b) => a.dueAt.localeCompare(b.dueAt));
   const originalBlocks = dates.map((day) =>
     dayBlocks(day, timeZone, snapshot.tasks, activeSessions, occurrences),
@@ -438,7 +434,7 @@ export function CalendarView() {
           Événement
         </Button>
         <Button
-          disabled={!snapshot.tasks.some((task) => task.progress < 100)}
+          disabled={!snapshot.tasks.some((task) => canPlanTask(task, snapshot.sessions, now))}
           onClick={() => openEditor({ type: "session" })}
         >
           <Plus data-icon="inline-start" />

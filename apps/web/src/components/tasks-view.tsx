@@ -23,7 +23,7 @@ import {
   Plus,
   Search,
 } from "lucide-react";
-import { getTaskMetrics, type Task } from "@upnext/contracts";
+import { canPlanTask, getTaskMetrics, type Task } from "@upnext/contracts";
 import { useWorkspace } from "./workspace-context";
 import { duration, formatDate, formatTimeUntil } from "@/lib/format";
 import { matchesTaskSearch } from "@/lib/task-search";
@@ -204,20 +204,20 @@ export function TasksView() {
       {
         id: "actions",
         header: "",
-        cell: ({ row }) => (
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label={`Planifier ${row.original.title}`}
-            disabled={row.original.progress === 100}
-            onClick={() => openEditor({ type: "session", taskId: row.original.id })}
-          >
-            <CalendarClock />
-          </Button>
-        ),
+        cell: ({ row }) =>
+          canPlanTask(row.original, snapshot.sessions, now) ? (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={`Planifier ${row.original.title}`}
+              onClick={() => openEditor({ type: "session", taskId: row.original.id })}
+            >
+              <CalendarClock />
+            </Button>
+          ) : null,
       },
     ],
-    [snapshot, timeZone, openEditor],
+    [snapshot, timeZone, openEditor, now],
   );
   const table = useTable({
     features,
@@ -383,15 +383,16 @@ export function TasksView() {
                       >
                         {task.title}
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label={`Planifier ${task.title}`}
-                        disabled={task.progress === 100}
-                        onClick={() => openEditor({ type: "session", taskId: task.id })}
-                      >
-                        <CalendarClock />
-                      </Button>
+                      {canPlanTask(task, snapshot.sessions, now) && (
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label={`Planifier ${task.title}`}
+                          onClick={() => openEditor({ type: "session", taskId: task.id })}
+                        >
+                          <CalendarClock />
+                        </Button>
+                      )}
                     </div>
                     <button
                       type="button"

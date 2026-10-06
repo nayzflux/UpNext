@@ -28,6 +28,14 @@ export function sessionIsWithinGrace(endAt: string | Date, now = new Date()) {
 }
 
 export type PlanningStatus = "none" | "partial" | "full" | "done";
+export const PLANNING_EPSILON = 0.000001;
+
+export function canPlanTask(task: Task, sessions: Session[], now = new Date()) {
+  return (
+    task.progress < 100 &&
+    100 - task.progress - plannedSessionPercent(task.id, sessions, now) > PLANNING_EPSILON
+  );
+}
 
 export function plannedSessionPercent(
   taskId: string,
@@ -69,7 +77,9 @@ export function getTaskMetrics(
   const actualMinutes = logs
     .filter((log) => log.taskId === task.id)
     .reduce((total, log) => total + log.actualMinutes, 0);
-  const unplannedPercent = Math.max(0, 100 - task.progress - plannedPercent);
+  const unplannedPercent = canPlanTask(task, sessions, now)
+    ? Math.max(0, 100 - task.progress - plannedPercent)
+    : 0;
   const unplannedMinutes = Math.ceil((task.estimatedMinutes * unplannedPercent) / 100);
   let planning: PlanningStatus = "none";
 

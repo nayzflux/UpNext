@@ -1,7 +1,7 @@
 "use client";
 
 import { CalendarPlus, Check, Clock3, Pencil, Trash2 } from "lucide-react";
-import { getTaskMetrics, minutesBetween, type Task } from "@upnext/contracts";
+import { canPlanTask, getTaskMetrics, minutesBetween, type Task } from "@upnext/contracts";
 import { api } from "@/lib/api";
 import { duration, formatDate } from "@/lib/format";
 import { useAction, useWorkspace } from "../workspace-context";
@@ -84,10 +84,12 @@ export function TaskDetail({ task }: { task: Task }) {
         </Button>
         {task.progress < 100 && (
           <>
-            <Button onClick={() => openEditor({ type: "session", taskId: task.id })}>
-              <CalendarPlus data-icon="inline-start" />
-              Planifier
-            </Button>
+            {canPlanTask(task, snapshot.sessions, now) && (
+              <Button onClick={() => openEditor({ type: "session", taskId: task.id })}>
+                <CalendarPlus data-icon="inline-start" />
+                Planifier
+              </Button>
+            )}
             <Button
               variant="secondary"
               onClick={() => openEditor({ type: "log", taskId: task.id })}

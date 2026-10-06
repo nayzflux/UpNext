@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarClock, Sparkles } from "lucide-react";
 import {
+  canPlanTask,
   defaultSessionPercent,
   getTaskMetrics,
   minutesBetween,
@@ -146,7 +147,10 @@ export function SessionEditor({
             options={[
               { value: "none", label: "Choisir une tâche", disabled: true },
               ...snapshot.tasks
-                .filter((task) => task.progress < 100)
+                .filter(
+                  (task) =>
+                    task.id === session?.taskId || canPlanTask(task, snapshot.sessions, now),
+                )
                 .map((task) => ({ value: task.id, label: task.title })),
             ]}
             value={selectedTaskId || "none"}
