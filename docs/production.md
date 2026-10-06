@@ -2,7 +2,7 @@
 
 ## Configuration et HTTPS
 
-Utiliser Node 24, Bun 1.4.0 et Docker Compose. Copier `.env.production.example` vers `.env.production`, puis remplacer tous les exemples. L'API refuse en production une origine sans HTTPS, les secrets d'exemple, un mot de passe PostgreSQL trop court et les domaines d'exemple. `APP_URL` est l'origine publique exacte, sans chemin. Encoder le mot de passe dans `DATABASE_URL_DOCKER` lorsqu'il contient des caractères réservés.
+Utiliser Node 24, Bun 1.4.0 et Docker Compose. Copier `.env.production.example` vers `.env.production`, puis remplacer tous les exemples. L'API lit les variables au démarrage avec `@t3-oss/env-core`. `DATABASE_URL` et `APP_URL` sont des chaînes non vides : leur format URL, leur protocole, leur domaine et le mot de passe PostgreSQL ne sont pas validés par le parseur. Le secret d'authentification doit contenir au moins 32 caractères et ne pas être une valeur d'exemple en production. Configurer `APP_URL` avec l'origine publique exacte, sans chemin. Encoder le mot de passe dans `DATABASE_URL_DOCKER` lorsqu'il contient des caractères réservés.
 
 Placer le frontend derrière un reverse proxy HTTPS. Conserver son port sur `127.0.0.1` si le proxy tourne sur le même hôte. Ne publier ni l'API ni PostgreSQL. Le proxy doit **remplacer** `X-Real-IP` par l'adresse du client : Better Auth utilise cet en-tête pour ses quotas, conservés dans PostgreSQL. Un en-tête fourni par le navigateur ne doit jamais être relayé tel quel. Pour un proxy dans un autre réseau, adapter l'adresse d'écoute et le pare-feu. Les cookies de session sont Secure, HttpOnly et SameSite=Lax.
 
