@@ -29,7 +29,7 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 10,
-    requireEmailVerification: true,
+    requireEmailVerification: !env.DISABLE_EMAIL_VERIFICATION,
     revokeSessionsOnPasswordReset: true,
     async sendResetPassword({ user, url }) {
       await mail.sendMail({
@@ -41,7 +41,7 @@ export const auth = betterAuth({
     },
   },
   emailVerification: {
-    sendOnSignUp: true,
+    sendOnSignUp: !env.DISABLE_EMAIL_VERIFICATION,
     autoSignInAfterVerification: true,
     async sendVerificationEmail({ user, url }) {
       await mail.sendMail({

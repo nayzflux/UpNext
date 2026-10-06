@@ -7,6 +7,10 @@ export const environmentSchema = z
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
     DATABASE_URL: z.url(),
     BETTER_AUTH_SECRET: z.string().min(32),
+    DISABLE_EMAIL_VERIFICATION: z
+      .string()
+      .default("false")
+      .transform((value) => value === "true"),
     APP_URL: z.url().default("http://localhost:3000"),
     PORT: port.default(3001),
     SMTP_HOST: z.string().min(1).default("localhost"),

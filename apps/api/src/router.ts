@@ -2,6 +2,7 @@ import { implement, ORPCError } from "@orpc/server";
 import { contract, suggestSlots } from "@upnext/contracts";
 import { auth } from "./auth";
 import { getSnapshot } from "./data";
+import { env } from "./env";
 import {
   createCalendarSource,
   deleteCalendarSource,
@@ -26,7 +27,7 @@ import {
 const implementation = implement(contract).$context<{ headers: Headers }>();
 const authenticated = implementation.use(async ({ context, next }) => {
   const session = await auth.api.getSession({ headers: context.headers });
-  if (!session?.user.emailVerified) {
+  if (!session || (!env.DISABLE_EMAIL_VERIFICATION && !session.user.emailVerified)) {
     throw new ORPCError("UNAUTHORIZED", {
       message: "Connecte-toi avec une adresse vérifiée pour continuer.",
     });

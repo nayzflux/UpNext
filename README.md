@@ -20,7 +20,7 @@ bun run dev
 
 Créer un compte dans l’application, puis ouvrir son email de confirmation dans Mailpit. Mailpit capture les emails localement ; aucun service externe n’est nécessaire. Le compte démarre avec zéro tâche, zéro tag et zéro disponibilité. Les liens de récupération du mot de passe arrivent également dans Mailpit.
 
-Le fichier `.env` à la racine configure les deux applications. `APP_URL` désigne l’origine du frontend ; `API_URL` est l’adresse interne de Hono. Le navigateur passe toujours par les chemins `/api` du frontend. Ne pas utiliser `127.0.0.1` à la place de `localhost` sans modifier `APP_URL`, car les cookies et les contrôles d’origine suivent cette valeur.
+Le fichier `.env` à la racine configure les deux applications. `APP_URL` désigne l’origine du frontend ; `API_URL` est l’adresse interne de Hono. Le navigateur passe toujours par les chemins `/api` du frontend. Ne pas utiliser `127.0.0.1` à la place de `localhost` sans modifier `APP_URL`, car les cookies et les contrôles d’origine suivent cette valeur. `DISABLE_EMAIL_VERIFICATION=true` désactive l’envoi et l’obligation de vérifier l’adresse email ; sa valeur par défaut est `false`.
 
 Les données PostgreSQL sont conservées dans un volume Docker. `docker compose stop` arrête les services sans effacer les données.
 
@@ -43,7 +43,7 @@ Copy-Item .env.production.example .env.production
 docker compose --env-file .env.production -f compose.production.yaml up --build -d --wait
 ```
 
-Le frontend écoute sur le port local configuré. La version de production exige un reverse proxy HTTPS et une origine publique correcte dans `APP_URL`. Seul le frontend est publié sur l'hôte par défaut ; l'API et PostgreSQL restent sur le réseau Docker. Après que PostgreSQL est prêt, l'API applique les migrations avant d'accepter des requêtes ; le frontend attend ensuite que l'API soit saine. L'adresse interne `http://api:3001` est intégrée au build du frontend. Pour une exposition publique, définir `APP_URL`, `WEB_BIND_ADDRESS` et `WEB_PORT` selon le domaine et le reverse proxy utilisés, et configurer un SMTP externe avec `SMTP_*`.
+Le frontend écoute sur le port local configuré. La version de production exige un reverse proxy HTTPS et une origine publique correcte dans `APP_URL`. Seul le frontend est publié sur l'hôte par défaut ; l'API et PostgreSQL restent sur le réseau Docker. Après que PostgreSQL est prêt, l'API applique les migrations avant d'accepter des requêtes ; le frontend attend ensuite que l'API soit saine. L'adresse interne `http://api:3001` est intégrée au build du frontend. Pour une exposition publique, définir `APP_URL`, `WEB_BIND_ADDRESS` et `WEB_PORT` selon le domaine et le reverse proxy utilisés, et configurer un SMTP externe avec `SMTP_*`. Pour ne pas demander la vérification des emails, définir `DISABLE_EMAIL_VERIFICATION=true` dans `.env.production`.
 
 Pour arrêter la pile sans supprimer les données :
 

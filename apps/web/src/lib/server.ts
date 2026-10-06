@@ -14,9 +14,9 @@ export const getViewer = cache(async () => {
   });
   if (!response.ok) throw new Error("Le service de connexion est indisponible.");
   const session = (await response.json()) as {
-    user: { id: string; name: string; email: string; emailVerified: boolean };
+    user: { id: string; name: string; email: string };
   } | null;
-  if (!session?.user.emailVerified) redirect("/connexion");
+  if (!session) redirect("/connexion");
   return session.user;
 });
 
