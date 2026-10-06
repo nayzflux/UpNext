@@ -39,6 +39,24 @@ function session(taskId: string, status: Session["status"], startAt: string, end
 }
 
 describe("page Aujourd’hui", () => {
+  it("sépare les durées connues et les tâches sans estimation", () => {
+    const known = task("Estimée", "2026-09-25T21:59:00Z");
+    const unknown = { ...task("À estimer", known.dueAt), estimatedMinutes: null };
+    const covered = { ...task("Déjà couverte", known.dueAt), estimatedMinutes: null };
+    const reservation = {
+      ...session(covered.id, "planned", "2026-09-23T08:00:00Z", "2026-09-23T09:00:00Z"),
+      plannedPercent: 100,
+    };
+    const result = summarizeUnplannedTasks(
+      [known, unknown, covered],
+      [reservation],
+      [],
+      new Date("2026-09-22T08:00:00Z"),
+    );
+    expect(result.items.map((item) => item.task.title)).toEqual(["Estimée", "À estimer"]);
+    expect(result.totalMinutes).toBe(120);
+    expect(result.unestimatedCount).toBe(1);
+  });
   it("classe les échéances avec la date locale autour de minuit", () => {
     const now = new Date("2026-09-21T22:30:00Z");
     const late = task("En retard", "2026-09-21T21:59:00Z");

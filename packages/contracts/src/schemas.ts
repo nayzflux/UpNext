@@ -38,7 +38,7 @@ export const taskFieldsSchema = z.object({
   priority: prioritySchema.default("normal"),
   dueAt: instantSchema,
   dateOnly: z.boolean().default(true),
-  estimatedMinutes: z.number().int().min(5).max(100000),
+  estimatedMinutes: z.number().int().min(5).max(100000).nullable().default(null),
   tagIds: z.array(idSchema).max(30).default([]),
   eventLink: eventLinkSchema.nullable().default(null),
 });

@@ -61,6 +61,33 @@ afterAll(async () => {
 });
 
 describe("PostgreSQL : propriété, contraintes et transactions", () => {
+  it("crée une tâche sans estimation et conserve les parts lors des changements d'estimation", async () => {
+    const task = await saveTask(alice, {
+      ...taskInput("Sans estimation"),
+      estimatedMinutes: null,
+    });
+    expect(task.estimatedMinutes).toBeNull();
+    const slot = {
+      taskId: task.id,
+      startAt: future(2, 16),
+      endAt: future(2, 17),
+      allowOverlap: true,
+    };
+    await expect(saveSession(alice, slot)).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    const reserved = await saveSession(alice, { ...slot, plannedPercent: 40 });
+    const estimated = await saveTask(alice, { ...task, estimatedMinutes: 180 });
+    expect(estimated.estimatedMinutes).toBe(180);
+    const cleared = await saveTask(alice, { ...estimated, estimatedMinutes: null });
+    expect(cleared.estimatedMinutes).toBeNull();
+    expect(
+      (await getSnapshot(alice)).sessions.find((item) => item.id === reserved.id)
+        ?.plannedPercent,
+    ).toBe(40);
+    await expect(saveSession(alice, { ...slot, plannedPercent: 61 })).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+    });
+    await deleteTask(alice, task.id);
+  });
   it("associe plusieurs tâches à une occurrence, suit son déplacement et garde leur date après suppression", async () => {
     const startAt = future(65);
     const endAt = new Date(new Date(startAt).getTime() + 3600000).toISOString();
@@ -543,10 +570,14 @@ describe("PostgreSQL : propriété, contraintes et transactions", () => {
     const currentTask = (await getSnapshot(bob)).tasks.find((item) => item.id === task.id)!;
     const finalLog = await saveLog(bob, { ...logInput(currentTask), progressAfter: 100 });
     const snapshot = await getSnapshot(bob);
-    expect(snapshot.sessions.find((item) => item.id === completed.id)?.status).toBe("completed");
+    expect(snapshot.sessions.find((item) => item.id === completed.id)?.status).toBe(
+      "completed",
+    );
     expect(snapshot.sessions.some((item) => item.id === firstFuture.id)).toBe(false);
     expect(snapshot.sessions.some((item) => item.id === secondFuture.id)).toBe(false);
-    expect(snapshot.logs.find((item) => item.id === firstLog.log.id)?.sessionId).toBe(completed.id);
+    expect(snapshot.logs.find((item) => item.id === firstLog.log.id)?.sessionId).toBe(
+      completed.id,
+    );
     expect(snapshot.logs.find((item) => item.id === finalLog.log.id)).toBeDefined();
     const archived = await db
       .select()

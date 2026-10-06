@@ -131,15 +131,15 @@ function WorkspaceContent({
   const totalRemaining = activeTasks.reduce(
     (total, task) =>
       total +
-      getTaskMetrics(task, snapshot.sessions, snapshot.logs, new Date(snapshot.serverNow))
-        .remainingMinutes,
+      (getTaskMetrics(task, snapshot.sessions, snapshot.logs, new Date(snapshot.serverNow))
+        .remainingMinutes ?? 0),
     0,
   );
   const totalUnplanned = activeTasks.reduce(
     (total, task) =>
       total +
-      getTaskMetrics(task, snapshot.sessions, snapshot.logs, new Date(snapshot.serverNow))
-        .unplannedMinutes,
+      (getTaskMetrics(task, snapshot.sessions, snapshot.logs, new Date(snapshot.serverNow))
+        .unplannedMinutes ?? 0),
     0,
   );
   const plannedRatio = totalRemaining

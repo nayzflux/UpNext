@@ -76,19 +76,20 @@ export function TaskEditor({
           : initialEvent && !("allDay" in initialEvent && initialEvent.allDay)
             ? localTime(initialEvent.startAt, timeZone)
             : "",
-      estimatedMinutes: task ? String(task.estimatedMinutes) : "",
+      estimatedMinutes: task?.estimatedMinutes != null ? String(task.estimatedMinutes) : "",
       tagIds: task?.tagIds ?? ([] as string[]),
       eventLink: initialLink,
     },
     onSubmit: async ({ value }) => {
       setValidationError("");
       try {
-        if (!value.dueDate || !value.estimatedMinutes) {
-          throw new Error("Indique une date limite et le temps estimé.");
+        if (!value.dueDate) {
+          throw new Error("Indique une date limite.");
         }
         const data = taskFieldsSchema.parse({
           ...value,
-          estimatedMinutes: Number(value.estimatedMinutes),
+          estimatedMinutes:
+            value.estimatedMinutes === "" ? null : Number(value.estimatedMinutes),
           dateOnly: !value.dueTime,
           dueAt: zonedInstant(value.dueDate, value.dueTime || "23:59", timeZone),
           eventLink: value.eventLink,
@@ -191,13 +192,12 @@ export function TaskEditor({
                 type="number"
                 min={5}
                 max={100000}
-                required
                 value={field.state.value}
                 placeholder="Par exemple 60"
                 onChange={(event) => field.handleChange(event.target.value)}
               />
               <FieldDescription>
-                Une première idée suffit. Tu pourras l’ajuster en avançant.
+                Facultatif. Tu peux laisser ce champ vide et estimer plus tard.
               </FieldDescription>
             </Field>
           )}

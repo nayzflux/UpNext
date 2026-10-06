@@ -1,5 +1,6 @@
 import {
   addCalendarDays,
+  canPlanTask,
   getTaskMetrics,
   localDate,
   zonedInstant,
@@ -43,17 +44,17 @@ export function summarizeUnplannedTasks(
   now: Date,
 ) {
   const items = tasks
-    .filter((task) => task.progress < 100)
+    .filter((task) => canPlanTask(task, sessions, now))
     .map((task) => ({
       task,
       minutes: getTaskMetrics(task, sessions, logs, now).unplannedMinutes,
     }))
-    .filter((item) => item.minutes > 0)
     .sort((a, b) => a.task.dueAt.localeCompare(b.task.dueAt));
 
   return {
     items,
-    totalMinutes: items.reduce((total, item) => total + item.minutes, 0),
+    totalMinutes: items.reduce((total, item) => total + (item.minutes ?? 0), 0),
+    unestimatedCount: items.filter((item) => item.minutes === null).length,
   };
 }
 

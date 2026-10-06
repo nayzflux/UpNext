@@ -3,7 +3,8 @@ import { formatInTimeZone } from "date-fns-tz";
 import { fr } from "date-fns/locale";
 import { localDate, localTime, zonedInstant, type PlanningStatus } from "@upnext/contracts";
 
-export function duration(minutes: number) {
+export function duration(minutes: number | null) {
+  if (minutes === null) return "Non estimée";
   const rounded = Math.round(minutes);
   if (rounded < 60) return `${rounded} min`;
   const rest = rounded % 60;

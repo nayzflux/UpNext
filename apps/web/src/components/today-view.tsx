@@ -307,8 +307,8 @@ export function TodayView() {
               À planifier <span>{unplanned.items.length}</span>
             </h2>
             <p className="today-section-description">
-              {unplanned.totalMinutes
-                ? `${duration(unplanned.totalMinutes)} n’ont pas encore de créneau.`
+              {unplanned.items.length
+                ? `${duration(unplanned.totalMinutes)} estimées à planifier${unplanned.unestimatedCount ? ` · ${unplanned.unestimatedCount} tâche(s) sans estimation` : ""}.`
                 : "Tout le travail restant a trouvé sa place."}
             </p>
           </div>

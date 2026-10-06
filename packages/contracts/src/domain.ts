@@ -54,7 +54,8 @@ export function plannedSessionPercent(
     .reduce((total, session) => total + session.plannedPercent, 0);
 }
 
-export function defaultSessionPercent(minutes: number, estimatedMinutes: number) {
+export function defaultSessionPercent(minutes: number, estimatedMinutes: number | null) {
+  if (estimatedMinutes === null) return 0;
   return Math.min(100, Math.round((minutes / estimatedMinutes) * 1000) / 10);
 }
 
@@ -64,7 +65,12 @@ export function getTaskMetrics(
   logs: WorkLog[],
   now = new Date(),
 ) {
-  const remainingMinutes = Math.ceil(task.estimatedMinutes * (1 - task.progress / 100));
+  const remainingMinutes =
+    task.progress >= 100
+      ? 0
+      : task.estimatedMinutes === null
+        ? null
+        : Math.ceil(task.estimatedMinutes * (1 - task.progress / 100));
   const plannedMinutes = sessions
     .filter(
       (session) =>
@@ -80,7 +86,12 @@ export function getTaskMetrics(
   const unplannedPercent = canPlanTask(task, sessions, now)
     ? Math.max(0, 100 - task.progress - plannedPercent)
     : 0;
-  const unplannedMinutes = Math.ceil((task.estimatedMinutes * unplannedPercent) / 100);
+  const unplannedMinutes =
+    unplannedPercent === 0
+      ? 0
+      : task.estimatedMinutes === null
+        ? null
+        : Math.ceil((task.estimatedMinutes * unplannedPercent) / 100);
   let planning: PlanningStatus = "none";
 
   if (task.progress >= 100) {
@@ -97,16 +108,17 @@ export function getTaskMetrics(
     plannedPercent,
     actualMinutes,
     unplannedMinutes,
+    unplannedPercent,
     planning,
   };
 }
 
 export function suggestedEstimate(
-  estimatedMinutes: number,
+  estimatedMinutes: number | null,
   actualMinutes: number,
   progress: number,
 ) {
-  if (progress < 10 || progress >= 100 || actualMinutes < 30) {
+  if (estimatedMinutes === null || progress < 10 || progress >= 100 || actualMinutes < 30) {
     return null;
   }
 

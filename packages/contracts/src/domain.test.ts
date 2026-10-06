@@ -130,6 +130,36 @@ function suggestions(overrides: Partial<Parameters<typeof suggestSlots>[0]> = {}
 }
 
 describe("tâches, tags et avancement", () => {
+  it("accepte une estimation absente sans fabriquer de durée", () => {
+    expect(
+      taskFieldsSchema.parse({ title: "À préciser", dueAt: task.dueAt }).estimatedMinutes,
+    ).toBeNull();
+    expect(taskFieldsSchema.safeParse({ ...task, estimatedMinutes: 0 }).success).toBe(false);
+    const unestimated = { ...task, estimatedMinutes: null };
+    expect(getTaskMetrics(unestimated, [], [], now)).toMatchObject({
+      remainingMinutes: null,
+      unplannedMinutes: null,
+      unplannedPercent: 75,
+      planning: "none",
+    });
+    const reserved = {
+      ...session("2026-03-24T10:00:00Z", "2026-03-24T11:00:00Z"),
+      plannedPercent: 75,
+    };
+    expect(getTaskMetrics(unestimated, [reserved], [], now)).toMatchObject({
+      remainingMinutes: null,
+      unplannedMinutes: 0,
+      unplannedPercent: 0,
+      planning: "full",
+    });
+    expect(getTaskMetrics({ ...unestimated, progress: 100 }, [], [], now)).toMatchObject({
+      remainingMinutes: 0,
+      unplannedMinutes: 0,
+      planning: "done",
+    });
+    expect(defaultSessionPercent(60, null)).toBe(0);
+    expect(suggestedEstimate(null, 90, 25)).toBeNull();
+  });
   it("ne propose la planification que lorsqu'il reste une part disponible", () => {
     const reserved = session("2026-03-24T10:00:00Z", "2026-03-24T11:00:00Z");
     expect(canPlanTask(task, [], now)).toBe(true);
@@ -162,6 +192,7 @@ describe("tâches, tags et avancement", () => {
       plannedPercent: 25,
       actualMinutes: 90,
       unplannedMinutes: 120,
+      unplannedPercent: 50,
       planning: "partial",
     });
   });

@@ -108,6 +108,10 @@ export function SessionEditor({
       setValidationError("Choisis une tâche, un créneau et une durée.");
       return;
     }
+    if (task?.estimatedMinutes === null && customPercent === "") {
+      setValidationError("Indique la part de la tâche pour cette séance sans estimation.");
+      return;
+    }
     if (exceeds || !Number.isFinite(percentage) || percentage < 0) {
       setValidationError("La part planifiée dépasse les 100 % de cette tâche.");
       return;
@@ -192,11 +196,14 @@ export function SessionEditor({
               min={0}
               max={availablePercent}
               step="any"
+              required={task?.estimatedMinutes === null}
               value={customPercent}
               placeholder={
                 suggestedPercent
                   ? `${suggestedPercent.toLocaleString("fr-FR")} % proposé`
-                  : "Automatique"
+                  : task?.estimatedMinutes === null
+                    ? "Par exemple 25"
+                    : "Automatique"
               }
               aria-invalid={exceeds}
               onChange={(event) => setCustomPercent(event.target.value)}
@@ -204,8 +211,10 @@ export function SessionEditor({
           </Field>
         </div>
         <FieldDescription>
-          La durée propose une part par défaut. Tu peux modifier cette part sans changer le
-          temps réservé. L’avancement réel sera renseigné après la séance.
+          {task?.estimatedMinutes === null
+            ? "Sans estimation totale, indique la part de la tâche que tu prévois de réaliser."
+            : "La durée propose une part par défaut. Tu peux modifier cette part sans changer le temps réservé."}{" "}
+          L’avancement réel sera renseigné après la séance.
         </FieldDescription>
         {metrics && (
           <FieldDescription>

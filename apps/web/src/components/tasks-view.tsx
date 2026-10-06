@@ -182,7 +182,7 @@ export function TasksView() {
           getTaskMetrics(task, snapshot.sessions, snapshot.logs, new Date(snapshot.serverNow))
             .remainingMinutes,
         cell: ({ getValue }) => (
-          <span className="whitespace-nowrap">{duration(getValue<number>())}</span>
+          <span className="whitespace-nowrap">{duration(getValue<number | null>())}</span>
         ),
       },
       {
@@ -231,16 +231,21 @@ export function TasksView() {
   const activeTasks = snapshot.tasks.filter((task) => task.progress < 100);
   const unplannedMinutes = activeTasks.reduce(
     (total, task) =>
-      total + getTaskMetrics(task, snapshot.sessions, snapshot.logs, now).unplannedMinutes,
+      total +
+      (getTaskMetrics(task, snapshot.sessions, snapshot.logs, now).unplannedMinutes ?? 0),
     0,
   );
+
+  const unestimatedCount = activeTasks.filter(
+    (task) => task.estimatedMinutes === null && canPlanTask(task, snapshot.sessions, now),
+  ).length;
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeading
         eyebrow="TOUT CE QUI COMPTE"
         title="Mes tâches"
-        description={`${activeTasks.length} tâche${activeTasks.length > 1 ? "s" : ""} en cours · ${duration(unplannedMinutes)} à planifier.`}
+        description={`${activeTasks.length} tâche${activeTasks.length > 1 ? "s" : ""} en cours · ${duration(unplannedMinutes)} estimées à planifier${unestimatedCount ? ` · ${unestimatedCount} tâche(s) sans estimation` : ""}.`}
       >
         <Button onClick={() => openEditor({ type: "task" })}>
           <Plus data-icon="inline-start" />

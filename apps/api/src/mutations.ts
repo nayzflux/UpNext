@@ -216,6 +216,11 @@ export async function saveSession(userId: string, input: z.infer<typeof sessionI
     const now = new Date();
     const assignedPercent = plannedSessionPercent(task.id, snapshot.sessions, now, input.id);
     const availablePercent = Math.max(0, 100 - task.progress - assignedPercent);
+    if (task.estimatedMinutes === null && input.plannedPercent === undefined) {
+      throw new ORPCError("BAD_REQUEST", {
+        message: "Indique la part de la tâche pour cette séance sans estimation.",
+      });
+    }
     const plannedPercent =
       input.plannedPercent ??
       Math.min(

@@ -170,7 +170,7 @@ export const tasks = pgTable(
     priority: text("priority").$type<"low" | "normal" | "high">().notNull().default("normal"),
     dueAt: timestamp("due_at", { withTimezone: true, mode: "string" }).notNull(),
     dateOnly: boolean("date_only").notNull().default(true),
-    estimatedMinutes: integer("estimated_minutes").notNull(),
+    estimatedMinutes: integer("estimated_minutes"),
     progress: doublePrecision("progress").notNull().default(0),
     revision: integer("revision").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })

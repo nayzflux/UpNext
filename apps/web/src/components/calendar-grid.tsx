@@ -44,7 +44,7 @@ export function BacklogTask({
 }) {
   const { snapshot, now, openEditor } = useWorkspace();
   const metrics = getTaskMetrics(task, snapshot.sessions, snapshot.logs, now);
-  const durationMinutes = snapMinute(metrics.unplannedMinutes, 15, 1440);
+  const durationMinutes = snapMinute(metrics.unplannedMinutes ?? 30, 15, 1440);
   const { setNodeRef, setActivatorNodeRef, listeners, attributes, isDragging } = useDraggable({
     id: `task:${task.id}`,
     data: { kind: "task", task, durationMinutes } satisfies CalendarDrag,
@@ -79,7 +79,9 @@ export function BacklogTask({
       </div>
       <span className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
         <Clock3 className="size-3" />
-        {duration(metrics.unplannedMinutes)} à placer
+        {metrics.unplannedMinutes === null
+          ? "Non estimée · durée à choisir"
+          : `${duration(metrics.unplannedMinutes)} à placer`}
       </span>
       <div className="mt-2 flex justify-end">
         <Button
