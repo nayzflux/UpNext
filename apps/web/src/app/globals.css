@@ -223,6 +223,7 @@
   flex-direction: column;
   gap: 14px;
   margin-top: auto;
+  border-top: 1px solid var(--border);
   padding-top: 20px;
 }
 .account-popup {
@@ -256,8 +257,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  border-top: 1px solid var(--border);
-  padding-top: 20px;
+  padding: 10px;
 }
 .profile-avatar {
   display: grid;
