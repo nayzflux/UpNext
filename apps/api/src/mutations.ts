@@ -388,7 +388,12 @@ export async function saveLog(userId: string, input: z.infer<typeof logInputSche
     }
     const actualStartAt = input.id
       ? latest.actualStartAt
-      : (sessionStartAt ?? new Date(Date.now() - actualMinutes * 60000).toISOString());
+      : new Date(
+          Math.min(
+            sessionStartAt ? new Date(sessionStartAt).getTime() : Infinity,
+            Date.now() - actualMinutes * 60000,
+          ),
+        ).toISOString();
     if (
       !input.missed &&
       new Date(actualStartAt).getTime() + actualMinutes * 60000 > Date.now() + 60000

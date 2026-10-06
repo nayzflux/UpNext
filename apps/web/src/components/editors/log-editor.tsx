@@ -29,14 +29,13 @@ export function LogEditor({
   session?: Session;
   log?: WorkLog;
 }) {
-  const { snapshot, now, timeZone, requestCloseEditor } = useWorkspace();
+  const { snapshot, timeZone, requestCloseEditor } = useWorkspace();
   const [choice, setChoice] = useState<string | null | undefined>();
   const eligibleSessions = snapshot.sessions
     .filter(
       (item) =>
         item.taskId === task.id &&
         (item.status === "planned" || item.status === "expired") &&
-        new Date(item.startAt) <= now &&
         !snapshot.logs.some((entry) => entry.sessionId === item.id),
     )
     .sort((a, b) => a.startAt.localeCompare(b.startAt));
@@ -106,29 +105,19 @@ function LogForm({
   const guard = useFormGuard();
   const action = useAction();
   const [requestId] = useState(() => crypto.randomUUID());
-  const defaultMinutes = session
-    ? Math.min(
-        minutesBetween(session.startAt, session.endAt),
-        Math.max(0, Math.floor((now.getTime() - new Date(session.startAt).getTime()) / 60000)),
-      )
-    : 30;
+  const defaultMinutes = session ? minutesBetween(session.startAt, session.endAt) : 30;
   const defaultProgress = Math.min(
     100,
     Math.round(
       (task.progress +
         (session
-          ? session.plannedPercent *
-            (defaultMinutes / minutesBetween(session.startAt, session.endAt))
+          ? session.plannedPercent
           : defaultSessionPercent(defaultMinutes, task.estimatedMinutes))) *
         10,
     ) / 10,
   );
-  const [minutes, setMinutes] = useState(
-    log ? String(log.actualMinutes) : session ? String(defaultMinutes) : "",
-  );
-  const [progress, setProgress] = useState(
-    log ? String(log.progressAfter) : session ? String(defaultProgress) : "",
-  );
+  const [minutes, setMinutes] = useState(String(log?.actualMinutes ?? defaultMinutes));
+  const [progress, setProgress] = useState(String(log?.progressAfter ?? defaultProgress));
   const [note, setNote] = useState(log?.note ?? "");
   const [missed, setMissed] = useState(log?.missed ?? false);
   useUnsavedForm([minutes, progress, note, missed], action.pending);
@@ -180,7 +169,7 @@ function LogForm({
         </p>
       </div>
       <FieldGroup>
-        {session && session.status !== "expired" && (
+        {session && session.status !== "expired" && new Date(session.startAt) <= now && (
           <Field orientation="horizontal">
             <Checkbox
               id="log-missed"

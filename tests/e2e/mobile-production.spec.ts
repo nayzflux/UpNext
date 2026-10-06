@@ -73,6 +73,7 @@ test("le parcours tactile préserve les saisies et permet de planifier et faire 
   await page
     .getByRole("button", { name: "Faire le bilan de Préparer le dossier mobile", exact: true })
     .tap();
+  await page.getByRole("button", { name: "Continuer sans réservation", exact: true }).tap();
   await page.getByLabel("Temps réellement passé, en minutes").fill("60");
   await page.getByLabel("Avancement total de la tâche, en %").fill("100");
   await page.getByRole("button", { name: "Enregistrer le bilan" }).tap();

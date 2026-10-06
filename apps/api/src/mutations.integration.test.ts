@@ -61,6 +61,60 @@ afterAll(async () => {
 });
 
 describe("PostgreSQL : propriété, contraintes et transactions", () => {
+  it.each(["future", "ongoing"])(
+    "enregistre un bilan anticipé (%s) sans déplacer la séance prévue",
+    async (timing) => {
+      const task = await saveTask(alice, taskInput("Bilan anticipé"));
+      const startAt =
+        timing === "future" ? future(2) : new Date(Date.now() - 10 * 60000).toISOString();
+      const session = await saveSession(alice, {
+        taskId: task.id,
+        startAt,
+        endAt: new Date(new Date(startAt).getTime() + 60 * 60000).toISOString(),
+        plannedPercent: 25,
+        allowOverlap: true,
+      });
+      const input = { ...logInput(task), sessionId: session.id, actualMinutes: 60 };
+      const saved = await saveLog(alice, input);
+      expect(new Date(saved.log.actualStartAt).getTime() + 60 * 60000).toBeLessThanOrEqual(
+        Date.now(),
+      );
+      const snapshot = await getSnapshot(alice);
+      expect(snapshot.sessions.find((item) => item.id === session.id)).toMatchObject({
+        startAt: session.startAt,
+        endAt: session.endAt,
+        status: "completed",
+      });
+      expect((await saveLog(alice, input)).log.id).toBe(saved.log.id);
+      const current = snapshot.tasks.find((item) => item.id === task.id)!;
+      const corrected = await saveLog(alice, {
+        ...logInput(current),
+        id: saved.log.id,
+        sessionId: session.id,
+        actualMinutes: 60,
+        progressAfter: 30,
+      });
+      expect(corrected.log.actualStartAt).toBe(saved.log.actualStartAt);
+      expect(corrected.log.progressAfter).toBe(30);
+      await deleteTask(alice, task.id);
+    },
+  );
+  it("demande d'annuler une séance future plutôt que de la déclarer manquée", async () => {
+    const task = await saveTask(alice, taskInput("Séance future non faite"));
+    const reserved = await saveSession(alice, {
+      taskId: task.id,
+      startAt: future(3),
+      endAt: future(3, 11),
+      allowOverlap: true,
+    });
+    await expect(
+      saveLog(alice, { ...logInput(task), sessionId: reserved.id, missed: true }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(
+      (await getSnapshot(alice)).sessions.find((item) => item.id === reserved.id)?.status,
+    ).toBe("planned");
+    await deleteTask(alice, task.id);
+  });
   it("crée une tâche sans estimation et conserve les parts lors des changements d'estimation", async () => {
     const task = await saveTask(alice, {
       ...taskInput("Sans estimation"),

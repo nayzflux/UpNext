@@ -2,7 +2,7 @@
 
 import type { CSSProperties, ReactElement } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
-import { Clock3, ListTodo, Pencil, Plus, Trash2 } from "lucide-react";
+import { Check, Clock3, ListTodo, Pencil, Plus, Trash2 } from "lucide-react";
 import {
   getTaskMetrics,
   minutesBetween,
@@ -129,6 +129,16 @@ export function SessionContextMenu({
             >
               <Pencil />
               Modifier la séance
+            </ContextMenuItem>
+          )}
+          {(session.status === "planned" || session.status === "expired") && (
+            <ContextMenuItem
+              onClick={() =>
+                openEditor({ type: "log", taskId: session.taskId, sessionId: session.id })
+              }
+            >
+              <Check />
+              Faire le bilan
             </ContextMenuItem>
           )}
           <ContextMenuItem

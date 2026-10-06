@@ -46,7 +46,9 @@ test("la recherche combine titre, description et tags sur ordinateur et mobile",
   ).toHaveCount(0);
 });
 
-test("un bilan choisit une séance commencée ou reste sans réservation", async ({ page }) => {
+test("un bilan choisit une séance passée ou future, ou reste sans réservation", async ({
+  page,
+}) => {
   await signUp(page);
   await page.goto("/taches");
   await openTaskForm(page, "Terminer mon dossier");
@@ -61,10 +63,12 @@ test("un bilan choisit une séance commencée ou reste sans réservation", async
   const future = addCalendarDays(localDate(new Date(), "Europe/Paris"), 1);
   await page.getByRole("button", { name: "Planifier Terminer mon dossier" }).click();
   await setDateTime(page, "Début de la séance", `${future}T11:00`);
-  await page.getByLabel("Durée, en minutes").fill("60");
+  await page.getByLabel("Durée, en minutes").fill("30");
   await page.getByRole("button", { name: "Planifier la séance", exact: true }).click();
 
   await page.getByRole("button", { name: "Faire le bilan de Terminer mon dossier" }).click();
+  await expect(page.getByText("Ce bilan concerne-t-il une séance prévue ?")).toBeVisible();
+  await page.getByRole("button", { name: "Continuer sans réservation" }).click();
   await expect(page.getByLabel("Temps réellement passé, en minutes")).toBeVisible();
   await page.getByRole("button", { name: "Annuler", exact: true }).click();
 
@@ -82,6 +86,9 @@ test("un bilan choisit une séance commencée ou reste sans réservation", async
   await expect(page.getByText("Ce bilan concerne-t-il une séance prévue ?")).toBeVisible();
   const choices = page.getByTestId("editor-modal").getByRole("button", { name: /· 1 h/ });
   await expect(choices).toHaveCount(1);
+  await expect(
+    page.getByTestId("editor-modal").getByRole("button", { name: /· 30 min/ }),
+  ).toHaveCount(1);
   await page.getByRole("button", { name: "Continuer sans réservation" }).click();
   await expect(page.getByText("Travail réalisé sans réservation")).toBeVisible();
   await page.getByRole("button", { name: "Changer de choix" }).click();

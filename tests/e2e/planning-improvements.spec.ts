@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { addCalendarDays, localDate } from "../../packages/contracts/src/domain";
-import { openTaskForm, setDateTime, signUp } from "./helpers";
+import { openTaskForm, saveTask, setDateTime, signUp } from "./helpers";
 
 test("une tâche sans estimation se planifie par pourcentage et disparaît une fois couverte", async ({
   page,
@@ -58,4 +58,48 @@ test("une tâche sans estimation se planifie par pourcentage et disparaît une f
   await expect(
     page.getByRole("button", { name: "Planifier Travail sans estimation", exact: true }),
   ).toHaveCount(0);
+});
+
+test("le bilan d'une séance future est prérempli, enregistrable et réestimable", async ({
+  page,
+}) => {
+  await signUp(page);
+  await page.goto("/taches");
+  await openTaskForm(page, "Séance effectuée en avance");
+  await saveTask(page);
+  await page
+    .getByRole("button", { name: "Faire le bilan de Séance effectuée en avance" })
+    .click();
+  await expect(page.getByLabel("Temps réellement passé, en minutes")).toHaveValue("30");
+  await expect(page.getByLabel("Avancement total de la tâche, en %")).toHaveValue("50");
+  await page.getByRole("button", { name: "Annuler", exact: true }).click();
+  const tomorrow = addCalendarDays(localDate(new Date(), "Europe/Paris"), 1);
+  await page.getByRole("button", { name: "Planifier Séance effectuée en avance" }).click();
+  await setDateTime(page, "Début de la séance", `${tomorrow}T11:00`);
+  await page.getByLabel("Durée, en minutes").fill("30");
+  await page.getByRole("button", { name: "Planifier la séance", exact: true }).click();
+  const modal = page.getByTestId("editor-modal");
+  await expect(modal).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Faire le bilan de Séance effectuée en avance" })
+    .click();
+  await expect(page.getByText("Ce bilan concerne-t-il une séance prévue ?")).toBeVisible();
+  await modal.getByRole("button", { name: /· 30 min/ }).click();
+  await expect(page.getByLabel("Temps réellement passé, en minutes")).toHaveValue("30");
+  await expect(page.getByLabel("Avancement total de la tâche, en %")).toHaveValue("50");
+  await expect(page.getByLabel("Je n’ai pas pu faire cette séance")).toHaveCount(0);
+  await page.getByLabel("Temps réellement passé, en minutes").fill("45");
+  await page.getByRole("button", { name: "Enregistrer le bilan" }).click();
+  await expect(modal.getByRole("heading", { name: "Ajuster le temps prévu ?" })).toBeVisible();
+  await page.getByRole("button", { name: "Garder mon estimation" }).click();
+  await expect(modal).toHaveCount(0);
+  await page
+    .locator(".desktop-task-table")
+    .getByRole("button", { name: "Séance effectuée en avance", exact: true })
+    .click();
+  await expect(modal).toContainText("Effectuée");
+  await expect(modal).toContainText("45 min travaillées");
+  await modal.getByRole("button", { name: "Corriger", exact: true }).click();
+  await expect(page.getByLabel("Temps réellement passé, en minutes")).toHaveValue("45");
+  await expect(page.getByLabel("Avancement total de la tâche, en %")).toHaveValue("50");
 });
