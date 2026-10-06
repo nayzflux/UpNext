@@ -81,6 +81,12 @@ export function EditorHost({ editor }: { editor: Editor }) {
     content = (
       <div className="p-6 pt-2 text-sm">
         <p className="font-semibold">{editor.event.sourceName}</p>
+        {editor.event.location && (
+          <p className="mt-2 whitespace-pre-wrap break-words">
+            <strong>Lieu : </strong>
+            {editor.event.location}
+          </p>
+        )}
         <p className="mt-2">
           {editor.event.allDay
             ? `Journée entière · du ${formatDate(editor.event.startAt, timeZone, "dd/MM/yyyy")} au ${formatDate(new Date(new Date(editor.event.endAt).getTime() - 1).toISOString(), timeZone, "dd/MM/yyyy")}`

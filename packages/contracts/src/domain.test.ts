@@ -397,6 +397,7 @@ describe("suggestions déterministes", () => {
       recurrenceId: "2026-03-24",
       sourceId: crypto.randomUUID(),
       sourceName: "Cours",
+      location: "",
       title: "Examen",
       startAt: "2026-03-24T16:00:00Z",
       endAt: "2026-03-24T17:00:00Z",

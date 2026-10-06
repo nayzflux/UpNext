@@ -121,6 +121,7 @@ describe("page Aujourd’hui", () => {
       uid: "external",
       recurrenceId: null,
       sourceName: "Université",
+      location: "",
       title: "Journée portes ouvertes",
       startAt: "2026-09-21T22:00:00Z",
       endAt: "2026-09-22T22:00:00Z",

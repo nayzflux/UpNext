@@ -42,6 +42,16 @@ function propertyZone(event: ICAL.Event, property: "dtstart" | "dtend") {
   return typeof value === "string" ? value : null;
 }
 
+function calendarEvent(component: ICAL.Component, components: ICAL.Component[]) {
+  const uid = component.getFirstPropertyValue("uid");
+  return new ICAL.Event(component, {
+    strictExceptions: true,
+    exceptions: components.filter(
+      (item) => item.hasProperty("recurrence-id") && item.getFirstPropertyValue("uid") === uid,
+    ),
+  });
+}
+
 function importedOccurrence(
   source: SourceContent,
   uid: string,
@@ -50,6 +60,7 @@ function importedOccurrence(
   start: ICAL.Time,
   end: ICAL.Time,
   accountZone: string,
+  fallbackLocation = "",
 ): ImportedEvent | null {
   if (
     String(item.component.getFirstPropertyValue("status") ?? "").toUpperCase() === "CANCELLED"
@@ -77,6 +88,9 @@ function importedOccurrence(
     recurrenceId,
     sourceName: source.name,
     title: item.summary || "Sans titre",
+    location: item.component.hasProperty("location")
+      ? String(item.component.getFirstPropertyValue("location") ?? "").trim()
+      : fallbackLocation,
     startAt,
     endAt,
     allDay: start.isDate,
@@ -95,7 +109,7 @@ export function resolveImportedOccurrence(
     (item) => !item.hasProperty("recurrence-id") && item.getFirstPropertyValue("uid") === uid,
   );
   if (!master) return null;
-  const event = new ICAL.Event(master, { strictExceptions: true });
+  const event = calendarEvent(master, components);
   if (recurrenceId === null) {
     return event.isRecurring()
       ? null
@@ -126,6 +140,7 @@ export function resolveImportedOccurrence(
       changed.startDate,
       changed.endDate,
       accountZone,
+      String(master.getFirstPropertyValue("location") ?? "").trim(),
     );
   }
   const iterator = event.iterator();
@@ -163,6 +178,12 @@ export function expandImported(
   const range = { startAt: rangeStart, endAt: rangeEnd };
   const components = calendar.getAllSubcomponents("vevent");
   const masters = components.filter((item) => !item.hasProperty("recurrence-id"));
+  const locations = new Map(
+    masters.map((item) => [
+      String(item.getFirstPropertyValue("uid")),
+      String(item.getFirstPropertyValue("location") ?? "").trim(),
+    ]),
+  );
   const exceptions = new Map(
     components
       .filter((item) => item.hasProperty("recurrence-id"))
@@ -190,12 +211,13 @@ export function expandImported(
       start,
       end,
       accountZone,
+      locations.get(uid) ?? "",
     );
     if (occurrence && overlaps(occurrence, range)) result.set(occurrence.id, occurrence);
   }
 
   for (const component of masters) {
-    const event = new ICAL.Event(component, { strictExceptions: true });
+    const event = calendarEvent(component, components);
     if (!event.isRecurring()) {
       add(event.uid, null, event, event.startDate, event.endDate);
       continue;

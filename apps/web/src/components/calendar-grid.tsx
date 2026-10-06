@@ -187,6 +187,14 @@ function BlockText({ block }: { block: CalendarBlock }) {
         </span>
       )}
       {block.event &&
+        "sourceId" in block.event &&
+        block.event.location &&
+        durationMinutes >= 60 && (
+          <span className="truncate" title={block.event.location}>
+            {block.event.location}
+          </span>
+        )}
+      {block.event &&
       "sourceId" in block.event &&
       block.event.allDay ? null : durationMinutes >= 45 ? (
         <span>
@@ -400,7 +408,7 @@ export function DayColumn({
               durationMinutes >= 30 && durationMinutes < 45 && "is-compact-block",
             )}
             style={blockStyle(block, firstMinute)}
-            title={`${block.title}${block.event && "sourceId" in block.event ? ` · ${block.event.sourceName}` : ""} (${startTime}–${endTime} · ${durationText})`}
+            title={`${block.title}${block.event && "sourceId" in block.event ? ` · ${block.event.sourceName}${block.event.location ? ` · ${block.event.location}` : ""}` : ""} (${startTime}–${endTime} · ${durationText})`}
             onClick={() =>
               block.event && "sourceId" in block.event
                 ? openEditor({ type: "importedEvent", event: block.event })

@@ -148,6 +148,7 @@ export const importedEventSchema = z.object({
   uid: z.string(),
   recurrenceId: z.string().nullable(),
   sourceName: z.string(),
+  location: z.string().default(""),
   title: z.string(),
   startAt: instantSchema,
   endAt: instantSchema,

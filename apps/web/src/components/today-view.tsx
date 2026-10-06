@@ -393,6 +393,7 @@ export function TodayView() {
                     {block.event && "sourceId" in block.event && (
                       <span className="truncate text-xs text-muted-foreground">
                         {block.event.sourceName}
+                        {block.event.location ? ` · ${block.event.location}` : ""}
                       </span>
                     )}
                   </Button>
@@ -457,7 +458,7 @@ export function TodayView() {
                           left: `calc(${(block.lane / block.lanes) * 100}% + 5px)`,
                           width: `calc(${100 / block.lanes}% - 10px)`,
                         }}
-                        title={`${block.title} · ${startTime}–${endTime}`}
+                        title={`${block.title} · ${startTime}–${endTime}${block.event && "sourceId" in block.event && block.event.location ? ` · ${block.event.location}` : ""}`}
                         onClick={() => openBlock(block)}
                       >
                         <strong>
@@ -478,6 +479,12 @@ export function TodayView() {
                             ? ` · ${block.event.sourceName}`
                             : ""}
                         </span>
+                        {block.event &&
+                          "sourceId" in block.event &&
+                          block.event.location &&
+                          block.end - block.visibleStart >= 60 && (
+                            <span className="truncate">{block.event.location}</span>
+                          )}
                       </Button>
                     );
                   })}
