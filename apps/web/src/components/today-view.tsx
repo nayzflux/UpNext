@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import {
   addCalendarDays,
+  canPlanTask,
   expandEvents,
   localDate,
   minutesBetween,
@@ -221,7 +222,7 @@ export function TodayView() {
             <Button
               variant="ghost"
               size="sm"
-              disabled={!active.length}
+              disabled={!active.some((task) => canPlanTask(task, snapshot.sessions, now))}
               onClick={() => openEditor({ type: "session" })}
             >
               <Plus data-icon="inline-start" />

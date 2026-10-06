@@ -128,6 +128,11 @@ test("filtres du calendrier et menu contextuel des séances", async ({ page }) =
   ).toHaveCount(0);
 
   await session.click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Faire le bilan", exact: true }).click();
+  await expect(page.getByLabel("Temps réellement passé, en minutes")).toHaveValue("60");
+  await expect(page.getByLabel("Avancement total de la tâche, en %")).toHaveValue("50");
+  await page.getByRole("button", { name: "Annuler", exact: true }).click();
+  await session.click({ button: "right" });
   await expect(page.getByRole("menuitem", { name: "Modifier la séance" })).toBeVisible();
   await page.getByRole("menuitem", { name: "Ouvrir la tâche" }).click();
   await expect(page.getByRole("heading", { name: "Révisions filtrées" })).toBeVisible();

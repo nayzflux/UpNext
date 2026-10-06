@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { addCalendarDays, localDate } from "../../packages/contracts/src/domain";
+import { pixelsPerMinute } from "../../apps/web/src/lib/calendar-layout";
 import { openTaskForm, saveTask, setDateTime, signUp } from "./helpers";
 
 test("une tâche sans estimation se planifie par pourcentage et disparaît une fois couverte", async ({
@@ -17,6 +18,10 @@ test("une tâche sans estimation se planifie par pourcentage et disparaît une f
   const modal = page.getByTestId("editor-modal");
   await expect(modal).toHaveCount(0);
   await expect(page.locator(".desktop-task-table")).toContainText("Non estimée");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator(".mobile-task-list")).toContainText("Non estimée");
+  await expect(page.locator(".mobile-task-list")).not.toContainText("Non estimée restantes");
+  await page.setViewportSize({ width: 1280, height: 900 });
 
   await page.goto(`/calendrier?date=${tomorrow}`);
   await page.getByRole("button", { name: "Jour", exact: true }).click();
@@ -25,7 +30,17 @@ test("une tâche sans estimation se planifie par pourcentage et disparaît une f
     .getByRole("button", { name: "Planifier Travail sans estimation", exact: true })
     .click();
   await expect(page.getByLabel("Durée, en minutes")).toHaveValue("30");
-  await setDateTime(page, "Début de la séance", `${tomorrow}T10:00`);
+  await page.getByRole("button", { name: "Annuler", exact: true }).click();
+  const source = await page.locator(".backlog-task .work-title").boundingBox();
+  const target = await page.locator(`[data-calendar-date="${tomorrow}"]`).boundingBox();
+  await page.mouse.move(source!.x + 5, source!.y + 5);
+  await page.mouse.down();
+  await page.mouse.move(target!.x + target!.width / 2, target!.y + 120 * pixelsPerMinute, {
+    steps: 12,
+  });
+  await expect(page.getByTestId("calendar-drag-preview")).toContainText("10:00–10:30");
+  await page.mouse.up();
+  await expect(page.getByLabel("Durée, en minutes")).toHaveValue("30");
   await page.getByLabel("Durée, en minutes").fill("45");
   await expect(page.getByLabel("Part de la tâche, en %")).toHaveAttribute("required", "");
   await page.getByLabel("Part de la tâche, en %").fill("100");
@@ -37,6 +52,12 @@ test("une tâche sans estimation se planifie par pourcentage et disparaît une f
   await expect(
     page.getByRole("button", { name: "Planifier Travail sans estimation", exact: true }),
   ).toHaveCount(0);
+  await page.goto("/aujourdhui");
+  await expect(page.getByRole("button", { name: "Ajouter", exact: true })).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "Planifier Travail sans estimation", exact: true }),
+  ).toHaveCount(0);
+  await page.goto("/taches");
   await page
     .locator(".desktop-task-table")
     .getByRole("button", { name: "Travail sans estimation", exact: true })
@@ -45,6 +66,15 @@ test("une tâche sans estimation se planifie par pourcentage et disparaît une f
   await expect(
     modal.getByRole("button", { name: "Modifier la séance", exact: true }),
   ).toBeVisible();
+  await modal.getByRole("button", { name: "Modifier la séance", exact: true }).click();
+  await expect(page.getByLabel("Part de la tâche, en %")).toHaveValue("100");
+  await page.getByLabel("Durée, en minutes").fill("60");
+  await page.getByRole("button", { name: "Enregistrer", exact: true }).click();
+  await expect(modal).toHaveCount(0);
+  await page
+    .locator(".desktop-task-table")
+    .getByRole("button", { name: "Travail sans estimation", exact: true })
+    .click();
   await modal.getByRole("button", { name: "Modifier", exact: true }).click();
   await expect(page.getByLabel("Temps estimé, en minutes")).toHaveValue("");
   await page.getByLabel("Temps estimé, en minutes").fill("120");
@@ -94,6 +124,9 @@ test("le profil regroupe le compte et protège les préférences avant déconnex
   ).toContainText("UTC");
   await page.getByRole("button", { name: "Enregistrer mes préférences", exact: true }).click();
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("button", { name: "Ouvrir le menu", exact: true }).click();
+  await expect(trigger).not.toBeVisible();
+  await page.getByRole("button", { name: "Fermer le menu", exact: true }).click();
   const account = page
     .locator(".mobile-bottom-nav")
     .getByRole("button", { name: "Compte", exact: true });
@@ -166,6 +199,7 @@ test("le bilan d'une séance future est prérempli, enregistrable et réestimabl
   await page.getByRole("button", { name: "Planifier Séance effectuée en avance" }).click();
   await setDateTime(page, "Début de la séance", `${tomorrow}T11:00`);
   await page.getByLabel("Durée, en minutes").fill("30");
+  await page.getByLabel("Part de la tâche, en %").fill("12.25");
   await page.getByRole("button", { name: "Planifier la séance", exact: true }).click();
   const modal = page.getByTestId("editor-modal");
   await expect(modal).toHaveCount(0);
@@ -175,7 +209,7 @@ test("le bilan d'une séance future est prérempli, enregistrable et réestimabl
   await expect(page.getByText("Ce bilan concerne-t-il une séance prévue ?")).toBeVisible();
   await modal.getByRole("button", { name: /· 30 min/ }).click();
   await expect(page.getByLabel("Temps réellement passé, en minutes")).toHaveValue("30");
-  await expect(page.getByLabel("Avancement total de la tâche, en %")).toHaveValue("50");
+  await expect(page.getByLabel("Avancement total de la tâche, en %")).toHaveValue("12.25");
   await expect(page.getByLabel("Je n’ai pas pu faire cette séance")).toHaveCount(0);
   await page.getByLabel("Temps réellement passé, en minutes").fill("45");
   await page.getByRole("button", { name: "Enregistrer le bilan" }).click();
@@ -190,5 +224,5 @@ test("le bilan d'une séance future est prérempli, enregistrable et réestimabl
   await expect(modal).toContainText("45 min travaillées");
   await modal.getByRole("button", { name: "Corriger", exact: true }).click();
   await expect(page.getByLabel("Temps réellement passé, en minutes")).toHaveValue("45");
-  await expect(page.getByLabel("Avancement total de la tâche, en %")).toHaveValue("50");
+  await expect(page.getByLabel("Avancement total de la tâche, en %")).toHaveValue("12.25");
 });

@@ -414,7 +414,8 @@ export function TasksView() {
                       <TaskTags task={task} />
                       <span className="mobile-task-progress">
                         <span>
-                          {task.progress} % · {duration(metrics.remainingMinutes)} restantes
+                          {task.progress} % · {duration(metrics.remainingMinutes)}
+                          {metrics.remainingMinutes !== null && " restantes"}
                         </span>
                         <PlanningBadge status={metrics.planning} />
                       </span>

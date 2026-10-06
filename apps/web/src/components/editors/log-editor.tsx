@@ -108,13 +108,10 @@ function LogForm({
   const defaultMinutes = session ? minutesBetween(session.startAt, session.endAt) : 30;
   const defaultProgress = Math.min(
     100,
-    Math.round(
-      (task.progress +
-        (session
-          ? session.plannedPercent
-          : defaultSessionPercent(defaultMinutes, task.estimatedMinutes))) *
-        10,
-    ) / 10,
+    task.progress +
+      (session
+        ? session.plannedPercent
+        : defaultSessionPercent(defaultMinutes, task.estimatedMinutes)),
   );
   const [minutes, setMinutes] = useState(String(log?.actualMinutes ?? defaultMinutes));
   const [progress, setProgress] = useState(String(log?.progressAfter ?? defaultProgress));

@@ -1401,6 +1401,9 @@
   }
 }
 @media (max-width: 1023px) {
+  .sidebar-bottom {
+    display: none;
+  }
   .app-layout {
     display: block;
   }
