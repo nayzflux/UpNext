@@ -96,16 +96,18 @@ test("modal centré, aperçu à taille réelle, snap et redimensionnement sur la
   expect((await card.boundingBox())!.height).toBeCloseTo(resized!.height, 0);
 
   const mainButton = card.getByRole("button", { name: /Déplacer ou ouvrir/ });
-  await mainButton.focus();
-  await page.keyboard.press("Space");
-  await expect(preview).toBeVisible();
-  // The keyboard sensor installs its key listener on the next event-loop turn.
-  await page.waitForTimeout(50);
-  await page.keyboard.press("ArrowDown");
-  await expect(preview).toContainText("10:45–13:15");
-  await page.keyboard.press("Escape");
-  await expect(preview).toHaveCount(0);
-  await expect(card).toContainText("10:30–13:00");
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await mainButton.focus();
+    await page.keyboard.press("Space");
+    await expect(preview).toBeVisible();
+    // The keyboard sensor installs its key listener on the next event-loop turn.
+    await page.waitForTimeout(50);
+    await page.keyboard.press("ArrowDown");
+    await expect(preview).toContainText("10:45–13:15");
+    await page.keyboard.press("Escape");
+    await expect(preview).toHaveCount(0);
+    await expect(card).toContainText("10:30–13:00");
+  }
 
   await openTaskForm(page, "Lecture à répartir");
   await page.getByLabel("Temps estimé, en minutes").fill("180");

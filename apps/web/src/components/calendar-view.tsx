@@ -84,6 +84,7 @@ export function CalendarView() {
   const [sessionToDelete, setSessionToDelete] = useState<Session | null>(null);
   const grid = useRef<HTMLDivElement>(null);
   const pointer = useRef<{ x: number; y: number } | null>(null);
+  const dragActive = useRef(false);
   const isPointerDrag = useRef(false);
   const keyboardDelta = useRef({ x: 0, y: 0 });
   const dragOrigin = useRef({ pageY: 0, grabOffset: 0 });
@@ -246,6 +247,7 @@ export function CalendarView() {
   });
 
   function dragStart(event: DragStartEvent) {
+    dragActive.current = true;
     const data = event.active.data.current as CalendarDrag;
     const activator = event.activatorEvent;
     const isPointer = "clientY" in activator && "clientX" in activator;
@@ -333,6 +335,8 @@ export function CalendarView() {
   }
 
   function dragMove(event: DragMoveEvent) {
+    // A queued drag-over callback must not recreate the preview after cancellation.
+    if (!dragActive.current) return;
     try {
       setPreview(previewFor(event));
     } catch {
@@ -341,6 +345,7 @@ export function CalendarView() {
   }
 
   function cancelDrag() {
+    dragActive.current = false;
     setDragging(null);
     setPreview(null);
     pointer.current = null;
