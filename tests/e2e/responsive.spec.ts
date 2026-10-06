@@ -124,6 +124,8 @@ test("les quatre écrans restent utilisables de 320 à 1440 px dans les deux th�
           await page.screenshot({
             path: `.artifacts/qa/${state}-${theme}-${route}-${width}.png`,
             fullPage: true,
+            // Do not mutate input styles while React may still be hydrating the route.
+            caret: "initial",
           });
         }
       }

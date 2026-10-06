@@ -60,6 +60,55 @@ test("une tâche sans estimation se planifie par pourcentage et disparaît une f
   ).toHaveCount(0);
 });
 
+test("le profil regroupe le compte et protège les préférences avant déconnexion sur PC et mobile", async ({
+  page,
+}) => {
+  const email = await signUp(page);
+  const sidebar = page.locator(".app-sidebar");
+  await expect(
+    sidebar.getByRole("button", { name: "Nouvelle tâche", exact: true }),
+  ).toHaveCount(0);
+  await expect(sidebar.locator(".sidebar-tags, .sidebar-note")).toHaveCount(0);
+  const trigger = page.getByRole("button", { name: "Ouvrir le menu du compte", exact: true });
+  await trigger.focus();
+  await page.keyboard.press("Enter");
+  const menu = page.getByRole("menu");
+  await expect(menu).toContainText(email);
+  await page.getByRole("menuitem", { name: "Mon compte", exact: true }).click();
+  await expect(page).toHaveURL(/\/parametres#compte$/);
+  await expect(page.locator("#compte")).toContainText(email);
+  await trigger.click();
+  await page.screenshot({ path: "test-results/account-desktop.png", fullPage: true });
+  await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0);
+  await expect(trigger).toBeFocused();
+  await page.getByRole("combobox", { name: "Fuseau horaire", exact: true }).click();
+  await page.getByRole("option", { name: "UTC", exact: true }).click();
+  await trigger.click();
+  await page.getByRole("menuitem", { name: "Se déconnecter", exact: true }).click();
+  const warning = page.getByRole("alertdialog", { name: "Abandonner les modifications ?" });
+  await expect(warning).toBeVisible();
+  await warning.getByRole("button", { name: "Continuer à modifier" }).click();
+  await expect(
+    page.getByRole("combobox", { name: "Fuseau horaire", exact: true }),
+  ).toContainText("UTC");
+  await page.getByRole("button", { name: "Enregistrer mes préférences", exact: true }).click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  const account = page
+    .locator(".mobile-bottom-nav")
+    .getByRole("button", { name: "Compte", exact: true });
+  await account.click();
+  const sheet = page.getByRole("dialog", { name: "Compte", exact: true });
+  await expect(sheet).toContainText(email);
+  await page.screenshot({ path: "test-results/account-mobile.png", fullPage: true });
+  await sheet.getByRole("button", { name: "Paramètres", exact: true }).click();
+  await expect(sheet).toHaveCount(0);
+  await expect(page).toHaveURL(/\/parametres$/);
+  await account.click();
+  await sheet.getByRole("button", { name: "Se déconnecter", exact: true }).click();
+  await expect(page).toHaveURL(/\/connexion$/);
+});
+
 test("le calendrier précède la liste et garde la création accessible dans chaque vue", async ({
   page,
 }) => {

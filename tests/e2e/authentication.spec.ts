@@ -5,7 +5,8 @@ test("déconnexion, récupération par email et connexion avec le nouveau mot de
   page,
 }) => {
   const email = await signUp(page);
-  await page.getByRole("button", { name: "Se déconnecter" }).click();
+  await page.getByRole("button", { name: "Ouvrir le menu du compte" }).click();
+  await page.getByRole("menuitem", { name: "Se déconnecter" }).click();
   await expect(page.getByRole("button", { name: "Me connecter", exact: true })).toBeVisible();
   await page.goto("/taches");
   await expect(page).toHaveURL(/\/connexion$/);

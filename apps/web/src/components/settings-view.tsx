@@ -408,7 +408,7 @@ export function SettingsView() {
         title="Paramètres"
         description="Tes repères, tes disponibilités, ton rythme."
       />
-      <section className="settings-section">
+      <section id="compte" className="settings-section scroll-mt-6">
         <div>
           <h2>Mon compte</h2>
           <p>Ton espace est personnel. Tes tâches, tags et bilans restent privés.</p>

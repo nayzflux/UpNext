@@ -71,11 +71,15 @@ Les procédures HTTPS/SMTP, sauvegarde, restauration et retour de version sont d
 - **Calendrier** propose les vues jour, semaine et mois. Sur mobile, la vue jour remplace la semaine. Cliquer dans la grille ou sur le bouton de planification ouvre le formulaire. Les séances peuvent être déplacées et redimensionnées ; le formulaire permet les mêmes opérations au clavier, avec une précision à la minute.
 - **Paramètres** gère les disponibilités, le fuseau IANA, le thème, les tags et les calendriers ICS externes.
 
+Sur ordinateur, le profil en bas de la sidebar ouvre **Mon compte**, **Paramètres** et **Se déconnecter**. Sur mobile, ces actions se trouvent dans le panneau **Compte** de la navigation basse. La création de tâches reste accessible dans l’en-tête d’Aujourd’hui, Mes tâches et Calendrier. Dans le calendrier, la liste **À planifier** se trouve à droite sur ordinateur et sous l’agenda sur mobile.
+
+Une tâche peut être créée sans estimation de temps. Ses durées restantes sont alors affichées comme **Non estimée**, et les totaux distinguent les durées connues des tâches sans estimation. Pour réserver une séance, saisir sa durée et la part de la tâche prévue en pourcentage. Lorsque l’avancement réel et les parts réservées couvrent 100 %, les actions de planification disparaissent ; les séances existantes restent modifiables. Ajouter ou retirer une estimation ne change pas leurs parts.
+
 L’application peut être installée comme PWA depuis le menu du navigateur sur HTTPS. En cas de rechargement sans réseau, une page hors connexion est affichée ; par sécurité, les données du compte et les modifications ne sont jamais mises en cache hors ligne.
 
 ### Calendriers externes
 
-Dans **Paramètres → Calendriers externes**, ajouter une ou plusieurs URL d’abonnement ICS en HTTPS. Les événements sont affichés en lecture seule dans **Calendrier** et **Aujourd’hui**, avec le nom de leur source. Ils comptent comme créneaux occupés pour les séances et les suggestions. Les tâches ne peuvent être liées qu’aux événements créés dans UpNext.
+Dans **Paramètres → Calendriers externes**, ajouter une ou plusieurs URL d’abonnement ICS en HTTPS. Les événements sont affichés en lecture seule dans **Calendrier** et **Aujourd’hui**, avec le nom de leur source et leur lieu lorsqu’il est renseigné. Le détail affiche le lieu complet, y compris pour les cartes courtes. Ils comptent comme créneaux occupés pour les séances et les suggestions.
 
 Pendant l’utilisation de l’application, chaque source est vérifiée au plus une fois par heure. Le bouton **Synchroniser** du calendrier force une vérification immédiate de toutes les sources. La date de la dernière réussite et les erreurs éventuelles sont visibles dans les paramètres. Si une vérification échoue, les événements issus de la dernière version valide restent visibles. Supprimer une source retire immédiatement ses événements.
 
@@ -86,6 +90,8 @@ Pour créer un tag, saisir un nom dans la tâche puis choisir `Créer « nom »`
 Une séance propose par défaut une part de la tâche calculée à partir de sa durée et de l’estimation. Cette part peut ensuite être modifiée sans changer la durée. L’avancement réel et les parts des séances futures ne peuvent pas dépasser 100 % au moment de la planification ; la durée réservée peut, elle, dépasser l’estimation. Un bilan remplace la part prévue par l’avancement réellement déclaré et réduit, si nécessaire, les parts des séances futures. Une séance passée sans bilan ne réserve plus de part. Changer l’estimation ne déplace aucune séance et ne modifie pas les parts déjà prévues. Les échéances sans heure sont fixées à 23 h 59 dans le fuseau du compte.
 
 Après une séance effectuée, le bilan propose la durée et le pourcentage **total** atteint à partir du créneau prévu. Chacune de ces valeurs peut être ajustée séparément, avec une note facultative. Le début réel n’est pas demandé. Une séance déclarée non faite ne demande aucune autre information. Après la fin du créneau, son ouverture donne directement accès au bilan ; la séance reste « Prévue » et sa part reste réservée pendant 24 heures. Sans bilan à la fin de ce délai, elle devient « Expirée · non faite » et sa part redevient disponible à planifier. Un bilan tardif reste possible. On peut aussi enregistrer du travail sans réservation et corriger le dernier bilan d’une tâche.
+
+La sélection de séance inclut les réservations futures sans bilan. Un travail effectué en avance peut être enregistré sur une séance future sans déplacer son créneau prévu ; son début réel est calculé pour que la durée travaillée se termine au plus tard maintenant. Le menu de la séance dans le calendrier propose aussi **Faire le bilan**. Pour une réservation future non effectuée, utiliser l’annulation. Sans réservation, le bilan propose 30 minutes et un avancement calculé à partir de l’estimation, ou l’avancement actuel si la tâche n’est pas estimée. Les propositions de réestimation restent facultatives et concernent les tâches déjà estimées.
 
 ### Calculs
 

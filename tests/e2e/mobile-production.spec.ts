@@ -84,7 +84,11 @@ test("le parcours tactile préserve les saisies et permet de planifier et faire 
   await page.getByRole("button", { name: "Aujourd’hui", exact: true }).tap();
   await page.getByRole("button", { name: "Période suivante" }).tap();
   await expect(page.getByTestId("session-card")).toHaveCount(0);
-  await navigation.getByRole("link", { name: "Paramètres", exact: true }).tap();
+  await navigation.getByRole("button", { name: "Compte", exact: true }).tap();
+  await page
+    .getByRole("dialog", { name: "Compte", exact: true })
+    .getByRole("button", { name: "Paramètres", exact: true })
+    .tap();
   await page.getByRole("combobox", { name: "Fuseau horaire" }).tap();
   await page.getByRole("option", { name: "UTC", exact: true }).tap();
   await navigation.getByRole("link", { name: "Mes tâches", exact: true }).tap();

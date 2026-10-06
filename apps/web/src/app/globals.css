@@ -218,31 +218,6 @@
   background: var(--card);
   font-size: 10px;
 }
-.sidebar-tags {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  padding: 25px 12px;
-}
-.sidebar-tags > p {
-  font-size: 12px;
-  line-height: 1.7;
-  color: var(--muted-foreground);
-}
-.sidebar-tags a {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 12px;
-  color: var(--muted-foreground);
-}
-.tag-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--primary);
-  opacity: 0.65;
-}
 .sidebar-bottom {
   display: flex;
   flex-direction: column;
@@ -250,12 +225,32 @@
   margin-top: auto;
   padding-top: 20px;
 }
-.sidebar-note {
-  padding: 17px 15px;
+.account-popup {
+  min-width: 240px;
+  max-width: calc(100vw - 24px);
+  padding: 4px;
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: color-mix(in oklch, var(--card) 50%, transparent);
-  font-size: 12px;
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: 0 8px 28px color-mix(in oklch, var(--foreground) 12%, transparent);
+}
+.account-action {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  outline: none;
+  cursor: pointer;
+}
+.account-action[data-highlighted] {
+  background: var(--accent);
+}
+.account-action[data-disabled] {
+  opacity: 0.5;
+  cursor: default;
 }
 .profile-row {
   display: flex;
