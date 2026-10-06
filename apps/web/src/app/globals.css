@@ -880,7 +880,7 @@
 }
 .calendar-layout {
   display: grid;
-  grid-template-columns: 222px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) 222px;
   gap: 22px;
   align-items: start;
 }
@@ -1393,8 +1393,8 @@
   .app-topbar {
     padding-inline: 25px;
   }
-  .calendar-layout {
-    grid-template-columns: 185px minmax(0, 1fr);
+  .calendar-layout:not(.calendar-layout-no-backlog) {
+    grid-template-columns: minmax(0, 1fr) 185px;
     gap: 15px;
   }
   .calendar-toolbar h2 {
@@ -1595,7 +1595,7 @@
   }
   .calendar-layout {
     display: flex;
-    flex-direction: column-reverse;
+    flex-direction: column;
   }
   .calendar-surface {
     width: 100%;

@@ -433,6 +433,10 @@ export function CalendarView() {
           <CalendarPlus data-icon="inline-start" />
           Événement
         </Button>
+        <Button variant="outline" onClick={() => openEditor({ type: "task" })}>
+          <Plus data-icon="inline-start" />
+          Nouvelle tâche
+        </Button>
         <Button
           disabled={!snapshot.tasks.some((task) => canPlanTask(task, snapshot.sessions, now))}
           onClick={() => openEditor({ type: "session" })}
@@ -485,47 +489,6 @@ export function CalendarView() {
         onDragEnd={dragEnd}
       >
         <div className={cn("calendar-layout", !showTasks && "calendar-layout-no-backlog")}>
-          {showTasks && (
-            <aside className="calendar-backlog">
-              <div className="flex items-center justify-between">
-                <h2 className="font-semibold">À planifier</h2>
-                <Badge variant="secondary">{backlog.length}</Badge>
-              </div>
-              <p className="mt-2 mb-5 text-xs leading-relaxed text-muted-foreground">
-                {mobile
-                  ? "Choisis un créneau pour chaque tâche."
-                  : "Glisse une tâche dans ton agenda ou choisis son créneau."}
-              </p>
-              <div className="flex flex-col gap-3">
-                {backlog.map((task) => (
-                  <BacklogTask
-                    key={task.id}
-                    task={task}
-                    displayedDate={date}
-                    mobile={mobile}
-                  />
-                ))}
-                {backlog.length === 0 && (
-                  <Empty className="px-2 py-8">
-                    <EmptyHeader>
-                      <EmptyTitle>Tout a sa place</EmptyTitle>
-                      <EmptyDescription>
-                        Les tâches encore à planifier apparaîtront ici.
-                      </EmptyDescription>
-                    </EmptyHeader>
-                  </Empty>
-                )}
-              </div>
-              <Button
-                className="mt-5 w-full"
-                variant="outline"
-                onClick={() => openEditor({ type: "task" })}
-              >
-                <Plus data-icon="inline-start" />
-                Nouvelle tâche
-              </Button>
-            </aside>
-          )}
           <section className="calendar-surface">
             <div className="calendar-toolbar">
               <div className="flex items-center gap-1">
@@ -794,6 +757,39 @@ export function CalendarView() {
               <span>Horaires · {timeZone}</span>
             </div>
           </section>
+          {showTasks && (
+            <aside className="calendar-backlog">
+              <div className="flex items-center justify-between">
+                <h2 className="font-semibold">À planifier</h2>
+                <Badge variant="secondary">{backlog.length}</Badge>
+              </div>
+              <p className="mt-2 mb-5 text-xs leading-relaxed text-muted-foreground">
+                {mobile
+                  ? "Choisis un créneau pour chaque tâche."
+                  : "Glisse une tâche dans ton agenda ou choisis son créneau."}
+              </p>
+              <div className="flex flex-col gap-3">
+                {backlog.map((task) => (
+                  <BacklogTask
+                    key={task.id}
+                    task={task}
+                    displayedDate={date}
+                    mobile={mobile}
+                  />
+                ))}
+                {backlog.length === 0 && (
+                  <Empty className="px-2 py-8">
+                    <EmptyHeader>
+                      <EmptyTitle>Tout a sa place</EmptyTitle>
+                      <EmptyDescription>
+                        Les tâches encore à planifier apparaîtront ici.
+                      </EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
+                )}
+              </div>
+            </aside>
+          )}
         </div>
         <div className="sr-only" role="status" aria-live="polite">
           {preview &&

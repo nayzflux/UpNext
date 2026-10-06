@@ -60,6 +60,46 @@ test("une tâche sans estimation se planifie par pourcentage et disparaît une f
   ).toHaveCount(0);
 });
 
+test("le calendrier précède la liste et garde la création accessible dans chaque vue", async ({
+  page,
+}) => {
+  await signUp(page);
+  await page.goto("/calendrier");
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  const layout = page.locator(".calendar-layout");
+  const surface = page.locator(".calendar-surface");
+  const backlog = page.locator(".calendar-backlog");
+  await expect(layout.locator(":scope > *").first()).toHaveClass("calendar-surface");
+  expect((await surface.boundingBox())!.x).toBeLessThan((await backlog.boundingBox())!.x);
+  await expect(
+    backlog.getByRole("button", { name: "Nouvelle tâche", exact: true }),
+  ).toHaveCount(0);
+  for (const view of ["Jour", "Semaine", "Mois"]) {
+    await page.getByRole("button", { name: view, exact: true }).click();
+    await page
+      .locator(".page-heading")
+      .getByRole("button", { name: "Nouvelle tâche", exact: true })
+      .click();
+    await expect(page.getByRole("heading", { name: "Une nouvelle tâche" })).toBeVisible();
+    await page.getByRole("button", { name: "Annuler", exact: true }).click();
+  }
+  await page.getByRole("button", { name: "Événements", exact: true }).click();
+  await expect(backlog).toHaveCount(0);
+  await page
+    .locator(".page-heading")
+    .getByRole("button", { name: "Nouvelle tâche", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Annuler", exact: true }).click();
+  await page.getByRole("button", { name: "Tout", exact: true }).click();
+  await page.getByRole("button", { name: "Jour", exact: true }).click();
+  await page.screenshot({ path: "test-results/calendar-desktop.png", fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect
+    .poll(async () => (await backlog.boundingBox())!.y - (await surface.boundingBox())!.y)
+    .toBeGreaterThan(0);
+  await page.screenshot({ path: "test-results/calendar-mobile.png", fullPage: true });
+});
+
 test("le bilan d'une séance future est prérempli, enregistrable et réestimable", async ({
   page,
 }) => {
