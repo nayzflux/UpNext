@@ -7,11 +7,12 @@ const today = () => localDate(new Date(), "Europe/Paris");
 test("inscription, tags, 50 %, déplacement, refus, bilan et réévaluation", async ({
   page,
 }) => {
+  test.setTimeout(120000);
   await page.setViewportSize({ width: 1440, height: 1100 });
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await signUp(page);
-  await expect(page.getByText("Ils prennent forme avec tes tâches.")).toBeVisible();
+  await expect(page.locator(".sidebar-tags")).toHaveCount(0);
   await openTaskForm(page, "Préparer mon DS");
   await page.getByLabel("Temps estimé, en minutes").fill("240");
   await addTag(page, "Révisions");

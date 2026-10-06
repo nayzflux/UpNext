@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { eq, inArray } from "drizzle-orm";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { fileURLToPath } from "node:url";
+import { readFile } from "node:fs/promises";
 import { db, pool } from "./db";
 import { studySessions, user } from "./db/schema";
 import { getSnapshot } from "./data";
@@ -61,6 +62,33 @@ afterAll(async () => {
 });
 
 describe("PostgreSQL : propriété, contraintes et transactions", () => {
+  it("la migration des estimations conserve les valeurs et accepte une durée inconnue", async () => {
+    const connection = await pool.connect();
+    try {
+      await connection.query("BEGIN");
+      // PostgreSQL resolves this temporary table before the application's real table.
+      await connection.query(
+        "CREATE TEMP TABLE tasks (estimated_minutes integer NOT NULL) ON COMMIT DROP",
+      );
+      await connection.query("INSERT INTO tasks VALUES (90)");
+      const migration = await readFile(
+        new URL("../drizzle/0006_stiff_sabra.sql", import.meta.url),
+        "utf8",
+      );
+      await connection.query(migration);
+      await connection.query("INSERT INTO tasks VALUES (NULL)");
+      expect(
+        (
+          await connection.query(
+            "SELECT estimated_minutes FROM tasks ORDER BY estimated_minutes NULLS LAST",
+          )
+        ).rows,
+      ).toEqual([{ estimated_minutes: 90 }, { estimated_minutes: null }]);
+    } finally {
+      await connection.query("ROLLBACK");
+      connection.release();
+    }
+  });
   it.each(["future", "ongoing"])(
     "enregistre un bilan anticipé (%s) sans déplacer la séance prévue",
     async (timing) => {
