@@ -20,6 +20,7 @@ import { api, orpc } from "@/lib/api";
 import { authClient } from "@/lib/auth-client";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { useMobileTabSwipe } from "@/lib/use-mobile-tab-swipe";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { WorkspaceContext, type Editor } from "./workspace-context";
@@ -64,6 +65,14 @@ function WorkspaceContent({
   const sessionExpired =
     query.error != null && "code" in query.error && query.error.code === "UNAUTHORIZED";
   const syncInFlight = useRef(false);
+  const activeTab = navigation.findIndex((item) => item.href === pathname);
+  const swipeHandlers = useMobileTabSwipe(
+    activeTab !== -1 && !menuOpen && !accountOpen && !editor,
+    (direction) => {
+      const nextTab = navigation[activeTab + (direction === "next" ? 1 : -1)];
+      if (nextTab) guard.run(() => router.push(nextTab.href));
+    },
+  );
 
   useEffect(() => {
     if (!snapshot?.calendarSources.length) return;
@@ -240,7 +249,7 @@ function WorkspaceContent({
               </span>
             </div>
           </header>
-          <main id="main-content" className="app-content">
+          <main id="main-content" className="app-content" {...swipeHandlers}>
             {query.isError && (
               <Alert className="mb-5" variant="destructive">
                 <AlertDescription>
